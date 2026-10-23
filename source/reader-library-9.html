@@ -64,16 +64,19 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--ac); outline-of
 .narr { font-family: var(--f-sans); font-style: normal; font-weight: 400; font-size: calc(1.04rem * var(--fs)); line-height: 1.5; color: color-mix(in srgb, var(--ink) 88%, var(--bg)); margin: 2px 0 2px 41px; text-align: left; }
 .row { display: grid; grid-template-columns: 33px minmax(0, 1fr); column-gap: 8px; align-items: start; max-width: 100%; justify-items: start; }
 .row .who { grid-column: 1 / -1; margin: 0 0 3px; }
+/* The name line sits above the bubble; the same space under the bubble keeps the gaps above and below it equal (owner 23.10.2026). */
+.row { margin-bottom: 20px; }
 .ava { flex: none; width: 33px; height: 33px; border-radius: 50%; object-fit: cover; background: var(--slot); box-shadow: var(--sh-sm);
   display: grid; place-items: center; font-size: .8rem; font-weight: 600; color: var(--ink-soft); }
 .bub { min-width: 0; background: var(--bubble); border: 1px solid var(--line); border-radius: 16px 16px 16px 5px; padding: 7px 11px 8px;
   font-size: calc(1.05rem * var(--fs)); line-height: 1.42; box-shadow: var(--sh-sm); }
-/* A thought is a cloud, never a speech bubble: round, dashed, no shadow, italic, two puffs from its top-left corner toward the avatar. */
+/* A thought is a cloud, never a speech bubble: round, dashed, no shadow, italic, three solid puffs from its top-left corner toward the avatar (owner 23.10.2026). */
 .thought .bub { position: relative; background: transparent; border: 1.5px dashed var(--muted); border-radius: 22px; box-shadow: none;
   font-style: italic; color: var(--ink-soft); margin-left: 6px; }
-.thought .bub::before, .thought .bub::after { content: ""; position: absolute; border: 1.5px dashed var(--muted); border-radius: 50%; }
-.thought .bub::before { width: 9px; height: 9px; left: -10px; top: 9px; }
-.thought .bub::after { width: 5px; height: 5px; left: -17px; top: 6px; }
+.thought .bub::before, .thought .bub::after, .thought .bub .puff { content: ""; position: absolute; border: 1px solid var(--muted); border-radius: 50%; background: var(--bg); }
+.thought .bub::before { width: 12px; height: 12px; left: -9px; top: 9px; }
+.thought .bub::after { width: 8px; height: 8px; left: -16px; top: 3px; }
+.thought .bub .puff { width: 5px; height: 5px; left: -21px; top: -2px; }
 .who { display: block; font-size: .8rem; font-weight: 600; color: var(--ac); }
 .typing { display: inline-flex; gap: 4px; padding: 13px 14px; }
 .typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); animation: blink 1s infinite; }
@@ -313,7 +316,7 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
   }
   const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const avatar = (key, name) => { const sp = D.speakers[key]; return sp?.asset ? `<img class="ava" src="${D.img[sp.asset]}" alt="">` : `<span class="ava">${esc((sp?.name || name || "?")[0])}</span>`; };
-  const line = (key, name, text, cls = "", thought = false) => add(`<span class="who">${thought ? '<span class="thought-marker" role="img" aria-label="Думка">◌ </span>' : ""}${esc(name)}</span>${avatar(key, name)}<div class="bub">${esc(text)}</div>`, "div", `row in ${cls}`);
+  const line = (key, name, text, cls = "", thought = false) => add(`<span class="who">${thought ? '<span class="thought-marker" role="img" aria-label="Думка">◌ </span>' : ""}${esc(name)}</span>${avatar(key, name)}<div class="bub">${thought ? '<i class="puff" aria-hidden="true"></i>' : ""}${esc(text)}</div>`, "div", `row in ${cls}`);
   function picture(n) {
     const [width, height] = D.imageSizes[n.asset];
     return add(`<img src="${D.img[n.asset]}" width="${width}" height="${height}" alt="">`, "figure", "pic in");
