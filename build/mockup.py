@@ -2,31 +2,38 @@
 
 Usage: python build/mockup.py source/reader-library-9.html mockup/source.html
 Then:  python build/phone.py mockup/source.html mockup/index.html
+Other builders import engine(): a book's `mode` (now / chat / pages) picks its behaviour.
 """
 import json
 import re
 import sys
 
-source, output = sys.argv[1], sys.argv[2]
-page = open(source, encoding="utf-8", newline="").read()
+SWAPS = []
 
 
 def swap(old, new):
-    global page
-    assert page.count(old) == 1, f"expected one match: {old[:70]!r} ({page.count(old)})"
-    page = page.replace(old, new)
+    SWAPS.append((old, new))
 
 
-# The same chapter three times; the mode rides on the book.
-match = re.search(r'(<script type="application/json" id="data">)(.*?)(</script>)', page, re.S)
-books = json.loads(match.group(2).replace("<\\/", "</"))["books"]
-base = next(b for b in books if b["id"] == "sys1")
-modes = [("now", "Как сейчас", "Как у сотрудницы: потяни экран пальцем — под текстом пусто"),
-         ("chat", "Вариант 1: как мессенджер", "Новые реплики встают внизу над кнопками, прочитанное уезжает вверх"),
-         ("pages", "Вариант 2: страницы без пустоты", "Экран листается, как сейчас; палец вверх — то же, что «Далі»")]
-mock = [{**base, "id": f"mock-{mode}", "mode": mode, "title": title, "author": note} for mode, title, note in modes]
-data = json.dumps({"books": mock}, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
-page = page[:match.start(2)] + data + page[match.end(2):]
+def engine(page):
+    for old, new in SWAPS:
+        assert page.count(old) == 1, f"expected one match: {old[:70]!r} ({page.count(old)})"
+        page = page.replace(old, new)
+    return page
+
+
+def mockup_data(page):
+    # The same chapter three times; the mode rides on the book.
+    match = re.search(r'(<script type="application/json" id="data">)(.*?)(</script>)', page, re.S)
+    books = json.loads(match.group(2).replace("<\\/", "</"))["books"]
+    base = next(b for b in books if b["id"] == "sys1")
+    modes = [("now", "Как сейчас", "Как у сотрудницы: потяни экран пальцем — под текстом пусто"),
+             ("chat", "Вариант 1: как мессенджер", "Новые реплики встают внизу над кнопками, прочитанное уезжает вверх"),
+             ("pages", "Вариант 2: страницы без пустоты", "Экран листается, как сейчас; палец вверх — то же, что «Далі»")]
+    mock = [{**base, "id": f"mock-{mode}", "mode": mode, "title": title, "author": note} for mode, title, note in modes]
+    data = json.dumps({"books": mock}, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
+    return page[:match.start(2)] + data + page[match.end(2):]
+
 
 swap("@keyframes rise { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }",
      "@keyframes rise { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }\n"
@@ -34,10 +41,32 @@ swap("@keyframes rise { from { opacity: 0; transform: translateY(6px) } to { opa
      ".later { visibility: hidden; }\n"
      ".m-chat .stream { padding-bottom: calc(var(--dock-h) + 40px + env(safe-area-inset-bottom, 0px)); }\n"
      "/* Chat mode starts at the chapter title: the guide card above it would otherwise open the first screen. */\n"
-     ".m-chat #about { display: none; }")
+     ".m-chat #about { display: none; }\n"
+     "/* Variant 2 spacing (owner 23.10.2026): every gap between blocks is one value, 20% under today's gap between two replies\n"
+     "   (34px from a bubble to the letter tops of the next name -> 27.2px). A text block's edges are its letter tops and last baseline. */\n"
+     ".m-pages .stream { gap: 27.2px; }\n"
+     ".m-pages .row { margin-bottom: 0; }\n"
+     ".m-pages .row .who { text-box: trim-start cap alphabetic; }\n"
+     ".m-pages .narr { margin-block: 0; text-box: trim-both cap alphabetic; }\n"
+     ".m-pages .plate { margin: 0; }\n"
+     ".m-pages .plate span { text-box: trim-both cap alphabetic; }\n"
+     ".m-pages figure.pic { margin: 0; }\n"
+     ".m-pages .end-mark { padding: 0; text-box: trim-both cap alphabetic; }\n"
+     ".m-pages .ch-title { margin-bottom: 0; text-box: trim-end cap alphabetic; }\n"
+     ".m-pages .ch-title:empty { display: none; }\n"
+     ".m-pages .ch-kicker:has(+ .ch-title:empty) { text-box: trim-end cap alphabetic; }")
 
 swap('    $("ttlName").textContent = D.title;',
-     '    $("ttlName").textContent = D.title;\n    app.classList.toggle("m-chat", D.mode === "chat");')
+     '    $("ttlName").textContent = D.title;\n'
+     '    app.classList.toggle("m-chat", D.mode === "chat"); app.classList.toggle("m-pages", D.mode === "pages");')
+
+# The caption's text in its own box: a flex row's bare text cannot be trimmed to its letters.
+swap('    if (n.role === "plate") return add(esc(n.text), "p", "plate in");',
+     '    if (n.role === "plate") return add(`<span>${esc(n.text)}</span>`, "p", "plate in");')
+
+# The chapter's end mark keeps the one gap under the text; only a choice splits what is left around itself.
+swap("        S.terminal.style.marginTop = `${Math.max(0, left / 2)}px`;",
+     "        S.terminal.style.marginTop = `${S.waiting ? Math.max(0, left / 2) : 0}px`;")
 
 swap("  const countNodes = (ch) =>",
      '  const mode = () => D?.mode || "now";\n  const countNodes = (ch) =>')
@@ -73,11 +102,26 @@ swap("    if (!S.waiting || !S.terminal) return null;",
 
 swap("    S.preview = items().find((el) => el.offsetTop >= S.page.offsetTop && !fits(el)) || null;\n  }",
      """    S.preview = mode() === "chat" ? null : items().find((el) => el.offsetTop >= S.page.offsetTop && !fits(el)) || null;
-    // Pages mode: a block that does not fit waits unseen when only a strip is left for it; a big one (a picture) still shows
-    // its top, so the screen never stands half empty. A finger pull turns the page either way.
-    const hide = mode() === "pages" && !!S.preview && S.preview !== S.page && pageTop() + floor() - S.preview.offsetTop < floor() / 4;
-    if (mode() === "pages") items().forEach((el) => el.classList.toggle("later", hide && el.offsetTop >= S.preview.offsetTop));
+    if (mode() === "pages") pagesOverflow();
+  }
+  // Pages mode: nothing is cut under the buttons. A paragraph shows the whole lines that fit and goes on from the next line on
+  // the next page; a reply waits unseen; a picture shows its top when a quarter of the screen is left for it.
+  function pagesOverflow() {
+    const el = S.preview, room = el && el !== S.page ? pageTop() + floor() - 12 - el.offsetTop : 0;
+    items().forEach((item) => { item.style.clipPath = ""; });
+    S.split = 0;
+    if (room > 0 && el.matches(".narr")) {
+      // Lines are measured from the block's own drawn top, so its rise animation (a few px of shift) cancels out.
+      const lh = parseFloat(getComputedStyle(el).lineHeight), drawn = el.getBoundingClientRect().top + scrollY;
+      const cut = textLines(el).map((y) => y - drawn).find((y) => y + lh > room);
+      if (cut > 0) { S.split = cut; el.style.clipPath = `inset(0 0 ${el.offsetHeight - cut}px 0)`; }
+    }
+    const hide = room > 0 && !S.split && !(el.matches(".pic") && room >= floor() / 4);
+    items().forEach((item) => item.classList.toggle("later", room > 0 && (item.offsetTop > el.offsetTop || item === el && hide)));
   }""")
+
+swap("      else { S.page = S.preview; S.offset = 0; }",
+     '      else { S.page = S.preview; S.offset = mode() === "pages" ? S.split : 0; S.page.style.clipPath = ""; }')
 
 swap("""      await sleep(S.auto ? 650 : 420); t.remove();""",
      """      if (mode() === "chat") alignPage(true);
@@ -137,5 +181,8 @@ swap('  const showChrome = () => { top.classList.add("open"); };',
   }, { passive: false });
   window.addEventListener("scroll", () => { if (atRest() && !S.sliding && scrollY > pageTop() - 11) scrollTo(0, pageTop() - 12); });""")
 
-open(output, "w", encoding="utf-8", newline="").write(page)
-print("mockup source:", output)
+
+if __name__ == "__main__":
+    source, output = sys.argv[1], sys.argv[2]
+    open(output, "w", encoding="utf-8", newline="").write(engine(mockup_data(open(source, encoding="utf-8", newline="").read())))
+    print("mockup source:", output)

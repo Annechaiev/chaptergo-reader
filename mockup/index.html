@@ -93,6 +93,19 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--ac); outline-of
 .m-chat .stream { padding-bottom: calc(var(--dock-h) + 40px + env(safe-area-inset-bottom, 0px)); }
 /* Chat mode starts at the chapter title: the guide card above it would otherwise open the first screen. */
 .m-chat #about { display: none; }
+/* Variant 2 spacing (owner 23.10.2026): every gap between blocks is one value, 20% under today's gap between two replies
+   (34px from a bubble to the letter tops of the next name -> 27.2px). A text block's edges are its letter tops and last baseline. */
+.m-pages .stream { gap: 27.2px; }
+.m-pages .row { margin-bottom: 0; }
+.m-pages .row .who { text-box: trim-start cap alphabetic; }
+.m-pages .narr { margin-block: 0; text-box: trim-both cap alphabetic; }
+.m-pages .plate { margin: 0; }
+.m-pages .plate span { text-box: trim-both cap alphabetic; }
+.m-pages figure.pic { margin: 0; }
+.m-pages .end-mark { padding: 0; text-box: trim-both cap alphabetic; }
+.m-pages .ch-title { margin-bottom: 0; text-box: trim-end cap alphabetic; }
+.m-pages .ch-title:empty { display: none; }
+.m-pages .ch-kicker:has(+ .ch-title:empty) { text-box: trim-end cap alphabetic; }
 figure.pic { margin: 6px 0; }
 figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; border-radius: 16px; box-shadow: var(--sh-card); }
 .choice { border: 1px solid var(--line); background: var(--chrome); border-radius: 18px; padding: 14px; display: grid; gap: 10px; }
@@ -281,7 +294,7 @@ html:not(.js) #app, .js #static { display: none; }
     if (book.pending) return;
     D = book; $("library").hidden = true; $("reader").hidden = false;
     $("ttlName").textContent = D.title;
-    app.classList.toggle("m-chat", D.mode === "chat");
+    app.classList.toggle("m-chat", D.mode === "chat"); app.classList.toggle("m-pages", D.mode === "pages");
     $("styles").innerHTML = D.styles ? '<div class="lbl" style="margin:0">Лея, Адриан, Ден</div>' +
       styleRows.map(([k, t]) => `<div class="style"><h4>${t}</h4><div class="faces">${D.styles[k].map((src) => `<img src="${src}" alt="">`).join("")}</div></div>`).join("") : "";
     $("styles").closest("details").hidden = !D.styles;
@@ -373,7 +386,7 @@ html:not(.js) #app, .js #static { display: none; }
     }
     S.shown++;
     // A scene caption reads as the scene's heading, not as narration.
-    if (n.role === "plate") return add(esc(n.text), "p", "plate in");
+    if (n.role === "plate") return add(`<span>${esc(n.text)}</span>`, "p", "plate in");
     if (n.speaker === "narrator" && n.presentation !== "thought") return add(esc(n.text), "p", "narr in");
     return line(n.speaker, n.voiceName, n.text, n.presentation === "thought" ? "thought" : "", n.presentation === "thought");
   }
@@ -436,17 +449,29 @@ html:not(.js) #app, .js #static { display: none; }
         const want = pageTop() - space, back = items().find((el) => el.offsetTop >= want && el.offsetTop < pageTop());
         if (back) { S.page = back; S.offset = 0; }
         const left = floor() - 22 - (S.terminal.offsetTop + S.terminal.offsetHeight - pageTop() + 12);
-        S.terminal.style.marginTop = `${Math.max(0, left / 2)}px`;
+        S.terminal.style.marginTop = `${S.waiting ? Math.max(0, left / 2) : 0}px`;
         return alignPage(smooth);
       }
     }
   }
   function overflow() {
     S.preview = mode() === "chat" ? null : items().find((el) => el.offsetTop >= S.page.offsetTop && !fits(el)) || null;
-    // Pages mode: a block that does not fit waits unseen when only a strip is left for it; a big one (a picture) still shows
-    // its top, so the screen never stands half empty. A finger pull turns the page either way.
-    const hide = mode() === "pages" && !!S.preview && S.preview !== S.page && pageTop() + floor() - S.preview.offsetTop < floor() / 4;
-    if (mode() === "pages") items().forEach((el) => el.classList.toggle("later", hide && el.offsetTop >= S.preview.offsetTop));
+    if (mode() === "pages") pagesOverflow();
+  }
+  // Pages mode: nothing is cut under the buttons. A paragraph shows the whole lines that fit and goes on from the next line on
+  // the next page; a reply waits unseen; a picture shows its top when a quarter of the screen is left for it.
+  function pagesOverflow() {
+    const el = S.preview, room = el && el !== S.page ? pageTop() + floor() - 12 - el.offsetTop : 0;
+    items().forEach((item) => { item.style.clipPath = ""; });
+    S.split = 0;
+    if (room > 0 && el.matches(".narr")) {
+      // Lines are measured from the block's own drawn top, so its rise animation (a few px of shift) cancels out.
+      const lh = parseFloat(getComputedStyle(el).lineHeight), drawn = el.getBoundingClientRect().top + scrollY;
+      const cut = textLines(el).map((y) => y - drawn).find((y) => y + lh > room);
+      if (cut > 0) { S.split = cut; el.style.clipPath = `inset(0 0 ${el.offsetHeight - cut}px 0)`; }
+    }
+    const hide = room > 0 && !S.split && !(el.matches(".pic") && room >= floor() / 4);
+    items().forEach((item) => item.classList.toggle("later", room > 0 && (item.offsetTop > el.offsetTop || item === el && hide)));
   }
   function textLines(el) {
     const text = el.querySelector(".bub") || el;
@@ -488,7 +513,7 @@ html:not(.js) #app, .js #static { display: none; }
       S.preview.classList.remove("later");
       if (ends) S.terminal.style.marginTop = "0px";
       if (S.preview === S.page) S.offset = continuation(S.page);
-      else { S.page = S.preview; S.offset = 0; }
+      else { S.page = S.preview; S.offset = mode() === "pages" ? S.split : 0; S.page.style.clipPath = ""; }
       S.preview = null;
     }
     S.running = true; S.flush = false; const gen = S.gen;
