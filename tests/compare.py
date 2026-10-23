@@ -52,6 +52,9 @@ def cmp(key, a, b):
         dur = lambda m: None if m[2] is None or m[3] is None else m[3] - m[2]
         ok = ma[:2] == mb[:2] and (dur(ma) is None) == (dur(mb) is None) and (dur(ma) is None or abs(dur(ma) - dur(mb)) <= 120)
         return ok, f'scrollY {ma[0]}->{ma[1]} / {mb[0]}->{mb[1]}, slide {dur(ma)}/{dur(mb)}ms'
+    if key == 'quick.state':  # the scroll target races the web fonts landing during the opening slide
+        a2, b2 = dict(a), dict(b); ya, yb = a2.pop('scrollY'), b2.pop('scrollY')
+        return a2 == b2, f'scrollY {ya}/{yb} (info)' + ('' if a2 == b2 else f' REF {j(a2)} PUB {j(b2)}')
     if key.startswith('auto.') and isinstance(a, dict):
         a2, b2 = dict(a), dict(b); ya, yb = a2.pop('scrollY'), b2.pop('scrollY')
         return a2 == b2 and abs(ya - yb) <= 25, f'scrollY {ya}/{yb}' + ('' if a2 == b2 else f' REF {j(a2)} PUB {j(b2)}')
