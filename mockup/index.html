@@ -106,6 +106,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--ac); outline-of
 .m-pages .ch-title { margin-bottom: 0; text-box: trim-end cap alphabetic; }
 .m-pages .ch-title:empty { display: none; }
 .m-pages .ch-kicker:has(+ .ch-title:empty) { text-box: trim-end cap alphabetic; }
+.m-pages .first-name { color: var(--ac); font-weight: 600; }
 figure.pic { margin: 6px 0; }
 figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; border-radius: 16px; box-shadow: var(--sh-card); }
 .choice { border: 1px solid var(--line); background: var(--chrome); border-radius: 18px; padding: 14px; display: grid; gap: 10px; }
@@ -324,6 +325,12 @@ html:not(.js) #app, .js #static { display: none; }
     restoring = true;
     cancel(); S.ch = i; S.ep = 0; S.id = chapter().episodes[0].start; S.waiting = false; S.done = false; S.shown = 0; S.total = countNodes(chapter());
     S.rendered = 0; S.choices = saved?.choices || {};
+    const labels = new Set(chapter().episodes.flatMap((e) => Object.values(e.nodes)).filter((x) => D.speakers[x.speaker] && x.voiceName).map((x) => x.voiceName));
+    // The word edge is a captured group, not a lookbehind: iOS Safari before 16.4 rejects lookbehind and the reader would stop.
+    S.labels = [...labels].map((label) => [label, new RegExp("(^|[^\\p{L}])(" + label.trim().split(/\s+/u).map((w) =>
+      (w.length > 6 ? w.slice(0, -2) : w.length > 3 ? w.slice(0, -1) : w).replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\p{L}*").join("\\s+") + ")",
+      label[0] === label[0].toLowerCase() ? "iu" : "u")]);
+    S.named = new Set();
     S.offset = 0; S.preview = S.terminal = null;
     stream.querySelectorAll(".item").forEach((el) => el.remove());
     const [num, ...rest] = chapter().title.split(". ");
@@ -352,9 +359,20 @@ html:not(.js) #app, .js #static { display: none; }
   function add(html, tag = "div", cls = "") {
     const el = document.createElement(tag); el.className = `item ${cls}`.trim(); el.innerHTML = html; stream.append(el); return el;
   }
+  function marks(text) {
+    if (mode() !== "pages") return esc(text);
+    const hits = S.labels.filter(([label]) => !S.named.has(label)).map(([label, re]) => [re.exec(text), label]).filter(([m]) => m)
+      .map(([m, label]) => [m.index + m[1].length, m[2].length, label]).sort((a, b) => a[0] - b[0]);
+    let out = "", at = 0;
+    for (const [i, len, label] of hits) {
+      if (i < at) continue;
+      out += esc(text.slice(at, i)) + `<b class="first-name">${esc(text.slice(i, i + len))}</b>`; at = i + len; S.named.add(label);
+    }
+    return out + esc(text.slice(at));
+  }
   const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const avatar = (key, name) => { const sp = D.speakers[key]; return sp?.asset ? `<img class="ava" src="${D.img[sp.asset]}" alt="">` : `<span class="ava">${esc((sp?.name || name || "?")[0])}</span>`; };
-  const line = (key, name, text, cls = "", thought = false) => add(`<span class="who">${thought ? '<span class="thought-marker" role="img" aria-label="Думка">◌ </span>' : ""}${esc(name)}</span>${avatar(key, name)}<div class="bub">${thought ? '<i class="puff" aria-hidden="true"></i>' : ""}${esc(text)}</div>`, "div", `row in ${cls}`);
+  const line = (key, name, text, cls = "", thought = false) => add(`<span class="who">${thought ? '<span class="thought-marker" role="img" aria-label="Думка">◌ </span>' : ""}${esc(name)}</span>${avatar(key, name)}<div class="bub">${thought ? '<i class="puff" aria-hidden="true"></i>' : ""}${marks(text)}</div>`, "div", `row in ${cls}`);
   function picture(n) {
     const [width, height] = D.imageSizes[n.asset];
     return add(`<img src="${D.img[n.asset]}" width="${width}" height="${height}" alt="">`, "figure", "pic in");
@@ -387,7 +405,7 @@ html:not(.js) #app, .js #static { display: none; }
     S.shown++;
     // A scene caption reads as the scene's heading, not as narration.
     if (n.role === "plate") return add(`<span>${esc(n.text)}</span>`, "p", "plate in");
-    if (n.speaker === "narrator" && n.presentation !== "thought") return add(esc(n.text), "p", "narr in");
+    if (n.speaker === "narrator" && n.presentation !== "thought") return add(marks(n.text), "p", "narr in");
     return line(n.speaker, n.voiceName, n.text, n.presentation === "thought" ? "thought" : "", n.presentation === "thought");
   }
 
@@ -420,7 +438,8 @@ html:not(.js) #app, .js #static { display: none; }
       const start = performance.now();
       const frame = (now) => {
         if (gen !== S.gen) { S.sliding = false; return resolve(); }
-        const k = Math.min(1, (now - start) / (chat ? 260 : 420));
+        // Pages mode slides 10% slower than today's 420 ms (owner 23.10.2026: «чуть медленнее, мягче»).
+        const k = Math.min(1, (now - start) / (chat ? 260 : mode() === "pages" ? 467 : 420));
         scrollTo(0, from + (top - from) * (1 - (1 - k) ** 3));
         if (k < 1) requestAnimationFrame(frame); else { S.sliding = false; resolve(); }
       };

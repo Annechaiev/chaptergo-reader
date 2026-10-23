@@ -62,8 +62,9 @@ swap("@keyframes rise { from { opacity: 0; transform: translateY(6px) } to { opa
 swap("    S.rendered = 0; S.choices = saved?.choices || {};",
      """    S.rendered = 0; S.choices = saved?.choices || {};
     const labels = new Set(chapter().episodes.flatMap((e) => Object.values(e.nodes)).filter((x) => D.speakers[x.speaker] && x.voiceName).map((x) => x.voiceName));
-    S.labels = [...labels].map((label) => [label, new RegExp("(?<!\\\\p{L})" + label.trim().split(/\\s+/u).map((w) =>
-      (w.length > 6 ? w.slice(0, -2) : w.length > 3 ? w.slice(0, -1) : w).replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&") + "\\\\p{L}*").join("\\\\s+"),
+    // The word edge is a captured group, not a lookbehind: iOS Safari before 16.4 rejects lookbehind and the reader would stop.
+    S.labels = [...labels].map((label) => [label, new RegExp("(^|[^\\\\p{L}])(" + label.trim().split(/\\s+/u).map((w) =>
+      (w.length > 6 ? w.slice(0, -2) : w.length > 3 ? w.slice(0, -1) : w).replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&") + "\\\\p{L}*").join("\\\\s+") + ")",
       label[0] === label[0].toLowerCase() ? "iu" : "u")]);
     S.named = new Set();""")
 
@@ -77,7 +78,7 @@ swap("  const esc = (t) =>",
      """  function marks(text) {
     if (mode() !== "pages") return esc(text);
     const hits = S.labels.filter(([label]) => !S.named.has(label)).map(([label, re]) => [re.exec(text), label]).filter(([m]) => m)
-      .map(([m, label]) => [m.index, m[0].length, label]).sort((a, b) => a[0] - b[0]);
+      .map(([m, label]) => [m.index + m[1].length, m[2].length, label]).sort((a, b) => a[0] - b[0]);
     let out = "", at = 0;
     for (const [i, len, label] of hits) {
       if (i < at) continue;
