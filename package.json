@@ -1,0 +1,6 @@
+{
+  "name": "chaptergo-reader",
+  "private": true,
+  "scripts": { "build": "python build/phone.py source/reader-library-9.html index.html", "test": "bash tests/run.sh" },
+  "devDependencies": { "playwright": "1.63.0" }
+}
