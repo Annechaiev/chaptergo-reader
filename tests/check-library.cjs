@@ -15,6 +15,31 @@ for (const book of data.books) for (const ch of book.chapters) {
   if (title.length > 80 || (title.match(/[.!?…]\s/g) || []).length > 1) failures.push(`${book.title}: chapter ${ch.number} title is not a heading: «${title.slice(0, 60)}…»`);
 }
 fs.mkdirSync(outDir, { recursive: true });
+// What is inside (owner 23.10.2026: «Прежде чем присылаешь ссылку на тест читалки, проверяешь адекватность того, что находится
+// внутри, по всем доступным зрительно и текстово параметрам»): chapters from 1 with no gap, a picture in every chapter, a portrait
+// for every speaker with 5+ lines, and content.txt — every chapter's text in node order — to be read before the link is sent.
+const report = [];
+for (const book of data.books) {
+  const numbers = book.chapters.map((ch) => ch.number);
+  if (numbers.some((n, i) => n !== i + 1)) failures.push(`${book.title}: chapters ${numbers.join(',')} do not run from 1 without a gap`);
+  const lines = {};
+  report.push(`# ${book.title}`);
+  for (const ch of book.chapters) {
+    const nodes = ch.episodes.flatMap((e) => Object.values(e.nodes));
+    const pictures = nodes.filter((n) => n.kind === 'image').length;
+    // Iron rule (owner 23.10.2026): every chapter opens with its picture, right under the title.
+    if (ch.episodes[0]?.nodes[ch.episodes[0].start]?.kind !== 'image') failures.push(`${book.title}: chapter ${ch.number} does not open with a picture`);
+    report.push(`## ${ch.number}. ${ch.title} — ${nodes.length} nodes, ${pictures} pictures`);
+    for (const n of nodes) {
+      if (n.speaker && n.speaker !== 'narrator') lines[n.speaker] = (lines[n.speaker] || 0) + 1;
+      if (n.kind === 'image') report.push('[picture]');
+      else if (n.text) report.push(`${n.speaker && n.speaker !== 'narrator' ? `${n.voiceName || n.speaker}${n.presentation === 'thought' ? ' (thought)' : ''}: ` : ''}${n.text}`);
+    }
+  }
+  for (const [key, count] of Object.entries(lines)) if (count >= 5 && key !== 'system' && !book.speakers?.[key]?.asset)
+    failures.push(`${book.title}: ${book.speakers?.[key]?.name || key} speaks ${count} lines and has no portrait`);
+}
+fs.writeFileSync(path.join(outDir, 'content.txt'), report.join('\n'));
 const chromium = process.env.CHROMIUM_PATH || 'C:/Users/AnD/AppData/Local/ms-playwright/chromium-1228/chrome-win64/chrome.exe';
 (async () => {
   const shots = [];
@@ -64,7 +89,7 @@ ims=[i.resize((int(i.width*720/i.height),720)) for i in ims]
 s=Image.new('RGB',(sum(i.width for i in ims)+10*len(ims),720),'white'); x=0
 for i in ims: s.paste(i,(x,0)); x+=i.width+10
 s.save(sys.argv[1],quality=75)`, path.join(outDir, 'sheet.jpg'), ...shots]);
-  console.log('first screens:', path.join(outDir, 'sheet.jpg'));
+  console.log('first screens:', path.join(outDir, 'sheet.jpg'), '| text to read:', path.join(outDir, 'content.txt'));
   if (failures.length) { console.log('CHECK FAILED\n- ' + failures.join('\n- ')); process.exit(1); }
-  console.log('CHECK PASSED: headings, first screens captured, taps add text, no overflow, no page errors');
+  console.log('CHECK PASSED: chapters from 1, pictures in every chapter, portraits for speakers, headings, first screens, taps add text, no overflow, no page errors');
 })().catch((e) => { console.error(e); process.exit(1); });
