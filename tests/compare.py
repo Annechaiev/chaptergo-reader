@@ -95,4 +95,6 @@ def main(tag):
         print(f'{fn:40s} {verdict}  ({r["n"]} checks)')
         for f in r['fail'] + r['abs']: print('    ', f[:900])
     json.dump({k: ('PASS' if not v['fail'] and not v['abs'] else 'FAIL') for k, v in res.items()}, open(f'verdict-{tag}.json', 'w'))
-for t in [a for a in sys.argv[1:] if not a.startswith('-')]: main(t)
+    return not A.get('crash') and not B.get('crash') and all(not v['fail'] and not v['abs'] for v in res.values())
+results = [main(t) for t in sys.argv[1:] if not t.startswith('-')]
+sys.exit(0 if all(results) else 1)

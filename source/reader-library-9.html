@@ -84,6 +84,33 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--ac); outline-of
 @keyframes blink { 0%, 80%, 100% { opacity: .25 } 40% { opacity: 1 } }
 .in { animation: rise .22s ease-out both; }
 @keyframes rise { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
+/* Blocks that do not fit wait for the next page. */
+.later { visibility: hidden; }
+/* Reading spacing (owner 23.10.2026): every gap between blocks is one value, 20% under today's gap between two replies
+   (34px from a bubble to the letter tops of the next name -> 27.2px). A text block's edges are its letter tops and last baseline. */
+#reader .stream { gap: 27.2px; }
+#reader .row { margin-bottom: 0; }
+#reader .row .who { text-box: trim-start cap alphabetic; }
+#reader .narr { margin-block: 0; text-box: trim-both cap alphabetic; }
+#reader .plate { margin: 0; }
+#reader .plate span { text-box: trim-both cap alphabetic; }
+#reader figure.pic { margin: 0; }
+#reader .end-mark { padding: 0; text-box: trim-both cap alphabetic; }
+#reader .ch-title { margin-bottom: 0; text-box: trim-end cap alphabetic; }
+#reader .ch-title:empty { display: none; }
+#reader .ch-kicker:has(+ .ch-title:empty) { text-box: trim-end cap alphabetic; }
+#reader .first-name { color: var(--ac); font-weight: 600; }
+/* Inter's cap-to-baseline box is about .73em. Remove the half-leading where text-box is unavailable. */
+@supports not (text-box: trim-both cap alphabetic) {
+  #reader .narr { margin-block: -.36em -.395em; }
+  #reader .row .who { margin-top: -.241em; }
+  #reader .thought-marker { line-height: 0; }
+  #reader .plate span { margin-block: -.241em; }
+  /* The end-positioning code resets inline margin-top; trimming still applies to that text. */
+  #reader .end-mark { margin-block: -.241em !important; }
+  #reader .ch-title { margin-bottom: -.33em; }
+  #reader .ch-kicker:has(+ .ch-title:empty) { margin-bottom: -.241em; }
+}
 figure.pic { margin: 6px 0; }
 figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; border-radius: 16px; box-shadow: var(--sh-card); }
 .choice { border: 1px solid var(--line); background: var(--chrome); border-radius: 18px; padding: 14px; display: grid; gap: 10px; }
@@ -224,13 +251,14 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
     if (positions[book.id]) return positions[book.id];
     try {
       const saved = JSON.parse(store.get(`cg-position:${book.id}`));
-      if (saved && Number.isInteger(saved.ch) && book.chapters[saved.ch] && Number.isInteger(saved.rendered) && saved.rendered >= 0 && saved.rendered <= countNodes(book.chapters[saved.ch]) + 20 && Number.isInteger(saved.page) && saved.page >= 0 && Number.isFinite(saved.offset) && saved.offset >= 0 && saved.choices && typeof saved.choices === "object") return positions[book.id] = saved;
+      if (saved && Number.isInteger(saved.ch) && book.chapters[saved.ch] && Number.isInteger(saved.rendered) && saved.rendered >= 0 && saved.rendered <= countNodes(book.chapters[saved.ch]) + 20 && (Number.isInteger(saved.block) && saved.block >= 0 && Number.isInteger(saved.line) && saved.line >= 0 || Number.isInteger(saved.page) && saved.page >= 0 && Number.isFinite(saved.offset) && saved.offset >= 0) && saved.choices && typeof saved.choices === "object") return positions[book.id] = saved;
     } catch {}
     return null;
   }
   function savePosition() {
     if (!D || restoring || $("reader").hidden || !S.page) return;
-    const saved = { ch: S.ch, rendered: S.rendered, choices: { ...S.choices }, page: items().indexOf(S.page), offset: S.offset };
+    const line = textLines(S.page).filter((y) => y - S.page.getBoundingClientRect().top - scrollY <= S.offset + 1).length - 1;
+    const saved = { ch: S.ch, rendered: S.rendered, choices: { ...S.choices }, block: items().indexOf(S.page), line: Math.max(0, line) };
     positions[D.id] = saved; store.set(`cg-position:${D.id}`, JSON.stringify(saved));
   }
   const firstPicture = (ch) => ch.episodes.flatMap(e => Object.values(e.nodes)).find(n => n.kind === "image");
@@ -286,6 +314,14 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
     restoring = true;
     cancel(); S.ch = i; S.ep = 0; S.id = chapter().episodes[0].start; S.waiting = false; S.done = false; S.shown = 0; S.total = countNodes(chapter());
     S.rendered = 0; S.choices = saved?.choices || {};
+    const labels = new Set(chapter().episodes.flatMap((e) => Object.values(e.nodes))
+      .filter((x) => x.voiceName != null && x.voiceName.trim() && x.speaker !== "system" && x.speaker !== "someone" && !x.speaker?.startsWith("role:"))
+      .map((x) => x.voiceName));
+    // The word edge is a captured group, not a lookbehind: iOS Safari before 16.4 rejects lookbehind and the reader would stop.
+    S.labels = [...labels].map((label) => [label, new RegExp("(^|[^\\p{L}])(" + label.trim().split(/\s+/u).map((w) =>
+      (w.length > 6 ? w.slice(0, -2) : w.length > 3 ? w.slice(0, -1) : w).replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\p{L}*").join("\\s+") + ")",
+      label[0] === label[0].toLowerCase() ? "iu" : "u")]);
+    S.named = new Set();
     S.offset = 0; S.preview = S.terminal = null;
     stream.querySelectorAll(".item").forEach((el) => el.remove());
     const [num, ...rest] = chapter().title.split(". ");
@@ -302,7 +338,9 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
           pick(el, n, choice, false);
         }
       }
-      S.page = items()[saved.page] || S.page; S.offset = saved.offset;
+      S.page = items()[saved.block ?? saved.page] || S.page;
+      const lines = textLines(S.page), drawn = S.page.getBoundingClientRect().top + scrollY;
+      S.offset = saved.line == null ? saved.offset : saved.line === 0 ? 0 : (lines[Math.min(saved.line, lines.length - 1)] ?? drawn) - drawn;
       restoring = false; alignPage(); overflow(); placeChoice(); sync(); return;
     }
     restoring = false;
@@ -314,9 +352,19 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
   function add(html, tag = "div", cls = "") {
     const el = document.createElement(tag); el.className = `item ${cls}`.trim(); el.innerHTML = html; stream.append(el); return el;
   }
+  function marks(text) {
+    const hits = S.labels.filter(([label]) => !S.named.has(label)).map(([label, re]) => [re.exec(text), label]).filter(([m]) => m)
+      .map(([m, label]) => [m.index + m[1].length, m[2].length, label]).sort((a, b) => a[0] - b[0]);
+    let out = "", at = 0;
+    for (const [i, len, label] of hits) {
+      if (i < at) continue;
+      out += esc(text.slice(at, i)) + `<b class="first-name">${esc(text.slice(i, i + len))}</b>`; at = i + len; S.named.add(label);
+    }
+    return out + esc(text.slice(at));
+  }
   const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const avatar = (key, name) => { const sp = D.speakers[key]; return sp?.asset ? `<img class="ava" src="${D.img[sp.asset]}" alt="">` : `<span class="ava">${esc((sp?.name || name || "?")[0])}</span>`; };
-  const line = (key, name, text, cls = "", thought = false) => add(`<span class="who">${thought ? '<span class="thought-marker" role="img" aria-label="Думка">◌ </span>' : ""}${esc(name)}</span>${avatar(key, name)}<div class="bub">${thought ? '<i class="puff" aria-hidden="true"></i>' : ""}${esc(text)}</div>`, "div", `row in ${cls}`);
+  const line = (key, name, text, cls = "", thought = false, mark = false) => add(`<span class="who">${thought ? '<span class="thought-marker" role="img" aria-label="Думка">◌ </span>' : ""}${esc(name)}</span>${avatar(key, name)}<div class="bub">${thought ? '<i class="puff" aria-hidden="true"></i>' : ""}${mark ? marks(text) : esc(text)}</div>`, "div", `row in ${cls}`);
   function picture(n) {
     const [width, height] = D.imageSizes[n.asset];
     return add(`<img src="${D.img[n.asset]}" width="${width}" height="${height}" alt="">`, "figure", "pic in");
@@ -348,9 +396,10 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
     }
     S.shown++;
     // A scene caption reads as the scene's heading, not as narration.
-    if (n.role === "plate") return add(esc(n.text), "p", "plate in");
-    if (n.speaker === "narrator" && n.presentation !== "thought") return add(esc(n.text), "p", "narr in");
-    return line(n.speaker, n.voiceName, n.text, n.presentation === "thought" ? "thought" : "", n.presentation === "thought");
+    if (n.role === "plate") return add(`<span>${esc(n.text)}</span>`, "p", "plate in");
+    const mark = (n.kind === "message" || n.kind === "ending") && n.role !== "break";
+    if (n.speaker === "narrator" && n.presentation !== "thought") return add(mark ? marks(n.text) : esc(n.text), "p", "narr in");
+    return line(n.speaker, n.voiceName, n.text, n.presentation === "thought" ? "thought" : "", n.presentation === "thought", mark);
   }
 
   // Moves the pointer past the node just shown; returns false at a choice or at the chapter's end.
@@ -376,13 +425,15 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
     if (!S.page?.isConnected) return null;
     const top = pageTop() - 12, from = scrollY, gen = S.gen;
     if (!smooth || Math.abs(from - top) < 2 || matchMedia("(prefers-reduced-motion: reduce)").matches) { scrollTo(0, top); return null; }
+    S.sliding = true;
     return new Promise((resolve) => {
       const start = performance.now();
       const frame = (now) => {
-        if (gen !== S.gen) return resolve();
-        const k = Math.min(1, (now - start) / 420);
+        if (gen !== S.gen) { S.sliding = false; return resolve(); }
+        // Pages mode slides 10% slower than today's 420 ms (owner 23.10.2026: «чуть медленнее, мягче»).
+        const k = Math.min(1, (now - start) / 467);
         scrollTo(0, from + (top - from) * (1 - (1 - k) ** 3));
-        if (k < 1) requestAnimationFrame(frame); else resolve();
+        if (k < 1) requestAnimationFrame(frame); else { S.sliding = false; resolve(); }
       };
       requestAnimationFrame(frame);
     });
@@ -396,7 +447,7 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
     return S.terminal && fits(S.terminal) && S.terminal.offsetTop >= pageTop();
   }
   function placeChoice(smooth = false) {
-    if (!S.waiting || !S.terminal) return null;
+    if (!(S.waiting || S.done) || !S.terminal) return null;
     S.terminal.style.marginTop = "0px";
     if (fits(S.terminal)) {
       const transform = getComputedStyle(S.terminal).transform;
@@ -408,13 +459,29 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
         const want = pageTop() - space, back = items().find((el) => el.offsetTop >= want && el.offsetTop < pageTop());
         if (back) { S.page = back; S.offset = 0; }
         const left = floor() - 22 - (S.terminal.offsetTop + S.terminal.offsetHeight - pageTop() + 12);
-        S.terminal.style.marginTop = `${Math.max(0, left / 2)}px`;
+        S.terminal.style.marginTop = `${S.waiting ? Math.max(0, left / 2) : 0}px`;
         return alignPage(smooth);
       }
     }
   }
   function overflow() {
     S.preview = items().find((el) => el.offsetTop >= S.page.offsetTop && !fits(el)) || null;
+    pagesOverflow();
+  }
+  // Pages mode: nothing is cut under the buttons. A paragraph shows the whole lines that fit and goes on from the next line on
+  // the next page; a reply waits unseen; a picture shows its top when a quarter of the screen is left for it.
+  function pagesOverflow() {
+    const el = S.preview, room = el ? pageTop() + floor() - 12 - el.offsetTop : 0;
+    items().forEach((item) => { item.style.clipPath = ""; });
+    S.split = 0;
+    if (room > 0 && (el.matches(".narr") || el === S.page && el.matches(".row"))) {
+      // Lines are measured from the block's own drawn top, so its rise animation (a few px of shift) cancels out.
+      const lh = parseFloat(getComputedStyle(el.querySelector(".bub") || el).lineHeight), drawn = el.getBoundingClientRect().top + scrollY;
+      const cut = textLines(el).map((y) => y - drawn).find((y) => y + lh > room);
+      if (cut > 0) { S.split = cut; el.style.clipPath = `inset(0 0 ${el.offsetHeight - cut}px 0)`; }
+    }
+    const hide = el !== S.page && room > 0 && !S.split && !(el.matches(".pic") && room >= floor() / 4);
+    items().forEach((item) => item.classList.toggle("later", room > 0 && (item.offsetTop > el.offsetTop || item === el && hide)));
   }
   function textLines(el) {
     const text = el.querySelector(".bub") || el;
@@ -438,7 +505,9 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
     const n = node();
     if (!S.flush && n.kind === "message" && n.speaker !== "narrator") {
       const t = add(`<span class="who">${esc(n.voiceName)}</span>${avatar(n.speaker, n.voiceName)}<div class="bub typing"><i></i><i></i><i></i></div>`, "div", "row");
-      await sleep(S.auto ? 650 : 420); t.remove();
+      // Pages mode: typing dots that would sit under the buttons are skipped; the line waits unseen anyway.
+      if (S.auto || fits(t)) await sleep(S.auto ? 650 : 420);
+      t.remove();
       if (gen !== S.gen) return false;
     }
     const el = render(n); if (el) el.dataset.node = `${S.ep}:${n.nodeId}`;
@@ -448,16 +517,18 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
   async function advance() {
     if (S.running) { S.flush = true; return; }
     if (terminalVisible()) return;
+    const ends = S.waiting || S.done;
     if (S.preview) {
-      if (S.waiting) S.terminal.style.marginTop = "0px";
-      if (S.preview === S.page) S.offset = continuation(S.page);
-      else { S.page = S.preview; S.offset = 0; }
+      S.preview.classList.remove("later");
+      if (ends) S.terminal.style.marginTop = "0px";
+      if (S.preview === S.page) S.offset = S.split || continuation(S.page);
+      else { S.page = S.preview; S.offset = S.split; S.page.style.clipPath = ""; }
       S.preview = null;
     }
     S.running = true; S.flush = false; const gen = S.gen;
     stream.setAttribute("aria-busy", "true");
     // A page that starts with the waiting choice moves once, straight to the choice's place (below), never up and back.
-    const slide = S.waiting && S.page === S.terminal ? null : alignPage(true);
+    const slide = ends && S.page === S.terminal ? null : alignPage(true);
     if (slide) { await slide; if (gen !== S.gen) return; }
     overflow();
     while (!S.preview && !S.waiting && !S.done) {
@@ -503,6 +574,7 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
   async function wholeChapter() {
     setAuto(false); cancel();
     while (!S.waiting && !S.done) { const n = node(); render(n); if (!step(n)) break; }
+    items().forEach((el) => { el.classList.remove("later"); el.style.clipPath = ""; });
     const terminal = S.terminal;
     terminal.style.marginTop = "0px";
     const limit = bottom(terminal) - (floor() - 12 - 22);
@@ -524,7 +596,7 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
     savePosition();
   }
 
-  function setAuto(on) { const was = S.auto; cancel(); S.auto = on; if (was && !on) pageAtScroll(); sync(); if (on) autoLoop(); }
+  function setAuto(on) { const was = S.auto; cancel(); S.auto = on; if (on) items().forEach((el) => { el.classList.remove("later"); el.style.clipPath = ""; }); if (was && !on) pageAtScroll(); sync(); if (on) autoLoop(); }
 
   $("next").onclick = (e) => { e.stopPropagation(); if (!S.done) return; S.ch + 1 < D.chapters.length ? startChapter(S.ch + 1) : showLibrary(); };
   go.onclick = (e) => {
@@ -548,6 +620,23 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
     if (e.clientX < edge || e.clientX > innerWidth - edge) showChrome();
   });
   const showChrome = () => { top.classList.add("open"); };
+
+  // Pages mode: a finger pull past the current screen turns the page like «Далі»; it never scrolls into the empty space below.
+  let pullY = null, pulled = false, wheelAt = 0;
+  const atRest = () => !$("reader").hidden && !S.auto && S.page;
+  const below = () => scrollY >= pageTop() - 13;
+  document.addEventListener("touchstart", (e) => { pullY = e.touches[0].clientY; pulled = false; }, { passive: true });
+  document.addEventListener("touchmove", (e) => {
+    if (!atRest() || pullY === null || e.target.closest(".panel")) return;
+    const dy = e.touches[0].clientY - pullY;
+    if (dy < 0 && below()) { e.preventDefault(); pulled = dy < -40; }
+  }, { passive: false });
+  document.addEventListener("touchend", () => { if (pulled && !go.disabled) advance(); pullY = null; pulled = false; });
+  window.addEventListener("wheel", (e) => {
+    if (!atRest() || e.deltaY <= 0 || !below()) return;
+    e.preventDefault(); if (e.timeStamp - wheelAt > 700 && !go.disabled) advance(); wheelAt = e.timeStamp;
+  }, { passive: false });
+  window.addEventListener("scroll", () => { if (atRest() && !S.sliding && scrollY > pageTop() - 11) scrollTo(0, pageTop() - 12); });
   function hideChrome() { top.classList.remove("open"); closePanels(); }
 
   function closePanels() { $("toc").hidden = $("settings").hidden = true; $("tocBtn").setAttribute("aria-expanded", false); $("setBtn").setAttribute("aria-expanded", false); }
@@ -578,8 +667,11 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
   showLibrary();
   function remeasure() {
     if (!S.page) return;
-    if (S.offset) S.offset = textLines(S.page).map((y) => y - S.page.offsetTop).filter((y) => y <= S.offset + 1).pop() || 0;
-    if (S.waiting) S.terminal.style.marginTop = "0px";
+    if (S.offset) {
+      const drawn = S.page.getBoundingClientRect().top + scrollY;
+      S.offset = textLines(S.page).map((y) => y - drawn).filter((y) => y <= S.offset + 1).pop() || 0;
+    }
+    if (S.waiting || S.done) S.terminal.style.marginTop = "0px";
     alignPage(); overflow(); placeChoice(); sync();
     if (!S.running && !S.preview && !terminalVisible()) advance();
   }
