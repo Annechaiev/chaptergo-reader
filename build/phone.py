@@ -36,7 +36,9 @@ edits = [
     ('<link rel="preconnect" href="https://fonts.googleapis.com">',
      '<script>document.documentElement.classList.add("js")</script>' + nl
      # An empty icon: without it the browser asks the host for /favicon.ico and logs a 404.
-     + '<link rel="icon" href="data:,">' + nl + '<link rel="preconnect" href="https://fonts.googleapis.com">'),
+     + '<link rel="icon" href="data:,">' + nl
+     # The product is behind a login; its public reader stays out of search results.
+     + '<meta name="robots" content="noindex">' + nl + '<link rel="preconnect" href="https://fonts.googleapis.com">'),
     ('<link rel="stylesheet" href="https://fonts.googleapis.com/',
      '<!-- Fonts never hold up the page: an in-app viewer without network or JavaScript reads it in system fonts. -->' + nl
      + '<link rel="stylesheet" media="print" onload="this.media=\'all\'" href="https://fonts.googleapis.com/'),
