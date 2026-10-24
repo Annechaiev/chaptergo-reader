@@ -319,9 +319,12 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
       .map((x) => x.voiceName));
     // The word edge is a captured group, not a lookbehind: iOS Safari before 16.4 rejects lookbehind and the reader would stop.
     // shortcut: suffix stems miss changing roots and non-suffix languages; upgrade with a per-locale stemmer when needed.
-    S.labels = [...labels].map((label) => [label, new RegExp("(^|[^\\p{L}])(" + label.trim().split(/\s+/u).map((w) =>
-      (w.length > 6 ? w.slice(0, -2) : w.length > 4 ? w.slice(0, -1) : w).replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + (w.length > 4 ? "\\p{L}{0,3}" : "")).join("\\s+") + ")(?=$|[^\\p{L}])",
-      label[0] === label[0].toLowerCase() ? "iu" : "u")]);
+    S.labels = [...labels].map((label) => {
+      const stems = label.trim().split(/\s+/u).map((w) => w.length > 6 ? w.slice(0, -2) : w.length > 3 ? w.slice(0, -1) : w);
+      return [label, new RegExp("(^|[^\\p{L}])(" + stems.map((stem) =>
+        stem.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\p{L}{0,4}").join("\\s+") + ")(?=$|[^\\p{L}])",
+        label[0] === label[0].toLowerCase() ? "iu" : "u"), stems.join(" ").length];
+    });
     S.named = new Set();
     S.offset = 0; S.preview = S.terminal = null;
     stream.querySelectorAll(".item").forEach((el) => el.remove());
@@ -354,11 +357,13 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
     const el = document.createElement(tag); el.className = `item ${cls}`.trim(); el.innerHTML = html; stream.append(el); return el;
   }
   function marks(text) {
-    const hits = S.labels.filter(([label]) => !S.named.has(label)).map(([label, re]) => [re.exec(text), label]).filter(([m]) => m)
-      .map(([m, label]) => [m.index + m[1].length, m[2].length, label]).sort((a, b) => a[0] - b[0]);
-    let out = "", at = 0;
+    const hits = S.labels.map(([label, re, length]) => [re.exec(text), label, length]).filter(([m]) => m)
+      .map(([m, label, length]) => [m.index + m[1].length, m[2].length, label, length]).sort((a, b) => a[0] - b[0] || b[3] - a[3]);
+    let out = "", at = 0, claimed = 0;
     for (const [i, len, label] of hits) {
-      if (i < at) continue;
+      if (i < claimed) continue;
+      claimed = i + len;
+      if (S.named.has(label)) continue;
       out += esc(text.slice(at, i)) + `<b class="first-name">${esc(text.slice(i, i + len))}</b>`; at = i + len; S.named.add(label);
     }
     return out + esc(text.slice(at));

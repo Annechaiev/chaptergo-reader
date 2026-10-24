@@ -15,9 +15,11 @@ const vectors = [
   { name: "branch B", labels: ["Таврінь"], texts: ["Тиша.", "Таврінь праворуч."], expected: [[], [[0, 7]]] },
   { name: "overlap keeps earliest", labels: ["сивий ліхтарник", "ліхтарник"], texts: ["сивий ліхтарник.", "ліхтарник."], expected: [[[0, 15]], [[0, 9]]] },
   { name: "word edge and whitespace", labels: ["Терван", "сивий ліхтарник"], texts: ["НеТерван. (Терване), сивий\nліхтарника."], expected: [[[11, 18], [21, 37]]] },
-  { name: "short labels stay whole", labels: ["Narl", "Дорн", "Лив"], texts: ["Narch. Дорна. Ливада.", "Narl Дорн Лив."], expected: [[], [[0, 4], [5, 9], [10, 13]]] },
+  { name: "short labels retain stems", labels: ["Narl", "Дорн", "Лив"], texts: ["Narch. Дорна. Ливада.", "Narl Дорн Лив."], expected: [[[0, 5], [7, 12], [14, 20]], []] },
+  { name: "short inflected first mentions", labels: ["Олег", "Іван", "Ден", "Емма"], texts: ["Він покликав Олега.", "Івану не спалося.", "Дена і Емми.", "Олег Іван Ден Емма."], expected: [[[13, 18]], [[0, 5]], [[0, 4], [7, 11]], []] },
+  { name: "four-letter suffix", labels: ["Адріан"], texts: ["Адріанові.", "Адріан."], expected: [[[0, 9]], []] },
   { name: "bounded suffix", labels: ["Терван"], texts: ["Тервахолодний.", "Терване."], expected: [[], [[0, 7]]] },
-  { name: "colliding labels consumed once", labels: ["Дорн", "Дорла"], texts: ["Дорла.", "Дорн.", "Дорла."], expected: [[[0, 5]], [[0, 4]], []] },
+  { name: "colliding labels consumed once", labels: ["Дорн", "Дорла"], texts: ["Дорла.", "Дорла.", "Дорн.", "Дорла."], expected: [[[0, 5]], [], [[0, 4]], []] },
 ];
 
 function marksVectors() {
