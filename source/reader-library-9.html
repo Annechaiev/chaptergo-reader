@@ -448,7 +448,7 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
     return S.terminal && fits(S.terminal) && S.terminal.offsetTop >= pageTop();
   }
   function placeChoice(smooth = false) {
-    if (!(S.waiting || S.done) || !S.terminal) return null;
+    if (!S.waiting || !S.terminal) return null;
     S.terminal.style.marginTop = "0px";
     if (fits(S.terminal)) {
       const transform = getComputedStyle(S.terminal).transform;
@@ -460,7 +460,7 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
         const want = pageTop() - space, back = items().find((el) => el.offsetTop >= want && el.offsetTop < pageTop());
         if (back) { S.page = back; S.offset = 0; }
         const left = floor() - 22 - (S.terminal.offsetTop + S.terminal.offsetHeight - pageTop() + 12);
-        S.terminal.style.marginTop = `${S.waiting ? Math.max(0, left / 2) : 0}px`;
+        S.terminal.style.marginTop = `${Math.max(0, left / 2)}px`;
         return alignPage(smooth);
       }
     }
@@ -529,7 +529,7 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
     S.running = true; S.flush = false; const gen = S.gen;
     stream.setAttribute("aria-busy", "true");
     // A page that starts with the waiting choice moves once, straight to the choice's place (below), never up and back.
-    const slide = ends && S.page === S.terminal ? null : alignPage(true);
+    const slide = S.waiting && S.page === S.terminal ? null : alignPage(true);
     if (slide) { await slide; if (gen !== S.gen) return; }
     overflow();
     while (!S.preview && !S.waiting && !S.done) {

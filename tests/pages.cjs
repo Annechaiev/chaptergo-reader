@@ -167,6 +167,46 @@ async function browserCases() {
       const migrated = await p.evaluate(() => JSON.parse(localStorage.getItem('cg-position:pages-test')));
       assert.equal(migrated.block, 3, `${dev}: old saved page restored`); assert.equal(migrated.line, 0);
       }
+      if (!onlyGaps && ['iPhone 13', 'Pixel 7'].includes(dev)) {
+        await p.clock.install(); await p.clock.pauseAt(new Date());
+        for (const viewport of [{ width: 390, height: 844 }, { width: 1440, height: 900 }]) {
+          await p.setViewportSize(viewport); await p.emulateMedia({ reducedMotion: 'reduce' });
+          content = fixture([message('An earlier page.'), message('The last page stays here.'),
+            { kind: 'ending', speaker: 'narrator', text: 'The rain stopped.' }]);
+          await p.goto('http://pages.test/u45.html');
+          await p.evaluate(() => { localStorage.clear(); localStorage.setItem('cg-menu-hint:pages-test', '1');
+            localStorage.setItem('cg-position:pages-test', JSON.stringify({ ch: 0, rendered: 2, choices: {}, block: 2, line: 0 })); });
+          await p.reload(); await p.evaluate(() => document.fonts.ready); await p.locator('[data-book]').tap();
+          const last = p.locator('#stream > .narr').nth(1);
+          const closing = await last.evaluate(el => {
+            const style = getComputedStyle(el), canvas = document.createElement('canvas').getContext('2d'); canvas.font = style.font;
+            const lines = Math.floor((document.querySelector('.links').getBoundingClientRect().top - 12 - 2 * el.offsetHeight - 27.2) / parseFloat(style.lineHeight)) + 1;
+            return 'x '.repeat(Math.floor((el.getBoundingClientRect().width - 1) / canvas.measureText('x ').width) * lines);
+          });
+          const before = await last.evaluate(el => el.getBoundingClientRect().top);
+          await p.locator('#go').tap(); await p.clock.runFor(1000);
+          const after = await last.evaluate(el => el.getBoundingClientRect().top);
+          console.log(`P1END ${engine} ${viewport.width}x${viewport.height} before=${before} after=${after}`);
+          assert.ok(Math.abs(after - before) <= 1, `last shown line moved: ${before} -> ${after}`);
+          content = fixture([message('An earlier page.'), message('The last page stays here.'),
+            { kind: 'ending', speaker: 'narrator', text: closing }]);
+          await p.goto('http://pages.test/u45.html');
+          await p.evaluate(() => { localStorage.clear(); localStorage.setItem('cg-menu-hint:pages-test', '1');
+            localStorage.setItem('cg-position:pages-test', JSON.stringify({ ch: 0, rendered: 2, choices: {}, block: 2, line: 0 })); });
+          await p.reload(); await p.evaluate(() => document.fonts.ready); await p.locator('[data-book]').tap();
+          await p.locator('#go').tap(); await p.clock.runFor(1000);
+          assert.equal(await p.locator('.end-mark').evaluate(el => getComputedStyle(el).visibility === 'hidden' || el.getBoundingClientRect().bottom > document.querySelector('.links').getBoundingClientRect().top - 22), true, 'an overflowing end mark waits below the page');
+          assert.equal(await p.locator('#go').isEnabled(), true);
+          await p.locator('#go').tap(); await p.clock.runFor(1000);
+          const end = await p.locator('.end-mark').evaluate(el => ({ top: el.getBoundingClientRect().top, bottom: el.getBoundingClientRect().bottom }));
+          console.log(`P1END ${engine} ${viewport.width}x${viewport.height} end-page=${JSON.stringify(end)}`);
+          assert.equal(await p.locator('.end-mark').isVisible(), true);
+          assert.ok(end.top >= 0 && end.bottom < viewport.height - 200, 'the next page shows the end with empty space below');
+
+        }
+        await p.clock.resume();
+        await p.setViewportSize(pw.devices[dev].viewport); await p.emulateMedia({ reducedMotion: 'no-preference' });
+      }
       // Measure letter-cap tops and last baselines, rather than invisible line-box leading.
       // Native text-box and the forced fallback both use the actual reader's rendering and font sizes.
       const spacingNodes = [message('НАРАЦІЯ'), message('РЕПЛІКА', 'person', { voiceName: 'Терван' }),
