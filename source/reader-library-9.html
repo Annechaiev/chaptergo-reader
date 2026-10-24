@@ -71,6 +71,8 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--ac); outline-of
 .row { margin-bottom: 20px; }
 .ava { flex: none; width: 33px; height: 33px; border-radius: 50%; object-fit: cover; background: var(--slot); box-shadow: var(--sh-sm);
   display: grid; place-items: center; font-size: .8rem; font-weight: 600; color: var(--ink-soft); }
+/* Owner 24.10.2026: a speaker's avatar 10% larger, grown toward the screen edge — its right edge, the bubble and the narration keep their places. */
+.row > .ava { width: 36.3px; height: 36.3px; margin-left: -3.3px; }
 .bub { min-width: 0; background: var(--bubble); border: 1px solid var(--line); border-radius: 16px 16px 16px 5px; padding: 7px 11px 8px;
   font-size: calc(1.05rem * var(--fs)); line-height: 1.42; box-shadow: var(--sh-sm); }
 /* A thought is a cloud, never a speech bubble: round, dashed, no shadow, italic, three solid puffs from its top-left corner toward the avatar (owner 23.10.2026). */
