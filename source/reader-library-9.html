@@ -89,9 +89,9 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--ac); outline-of
 @keyframes rise { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
 /* Blocks that do not fit wait for the next page. */
 .later { visibility: hidden; }
-/* Reading spacing (owner 23.10.2026): every gap between blocks is one value, 20% under today's gap between two replies
-   (34px from a bubble to the letter tops of the next name -> 27.2px). A text block's edges are its letter tops and last baseline. */
-#reader .stream { gap: 27.2px; }
+/* Reading spacing (owner 24.10.2026): reduce the one gap between all blocks by 10%, from 27.2px to 24.48px.
+   A text block's edges are its letter tops and last baseline. */
+#reader .stream { gap: 24.48px; }
 #reader .row { margin-bottom: 0; }
 #reader .row .who { text-box: trim-start cap alphabetic; }
 #reader .narr { margin-block: 0; text-box: trim-both cap alphabetic; }
@@ -114,7 +114,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--ac); outline-of
   #reader .ch-title { margin-bottom: -.33em; }
   #reader .ch-kicker:has(+ .ch-title:empty) { margin-bottom: -.241em; }
 }
-figure.pic { margin: 6px 0; }
+figure.pic { position: relative; margin: 6px 0; }
 figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; border-radius: 16px; box-shadow: var(--sh-card); }
 .choice { border: 1px solid var(--line); background: var(--chrome); border-radius: 18px; padding: 14px; display: grid; gap: 10px; }
 .choice p { margin: 0; font-family: var(--f-serif); font-style: italic; color: var(--ink-soft); }
@@ -154,8 +154,8 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
 /* Dropdowns under the top bar */
 .panel { position: fixed; z-index: 21; top: calc(46px + env(safe-area-inset-top, 0px) + 6px); width: min(16.5rem, calc(100vw - 24px));
   background: var(--panel); border: 1px solid var(--panel-line); border-radius: var(--r-panel); box-shadow: var(--sh-panel); padding: 12px; display: grid; gap: 10px; }
-.panel.settings { right: max(12px, env(safe-area-inset-right, 0px)); }
-.panel.toc { left: max(12px, env(safe-area-inset-left, 0px)); gap: 4px; padding: 8px; }
+.panel.settings { right: max(12px, env(safe-area-inset-right, 0px), calc((100vw - 34rem) / 2)); }
+.panel.toc { left: max(12px, env(safe-area-inset-left, 0px), calc((100vw - 34rem) / 2)); gap: 4px; padding: 8px; }
 .lbl { font-size: .66rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
 .seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--slot); border-radius: 9px; padding: 2px; gap: 2px; }
 .seg button { min-height: 30px; border: 0; border-radius: 7px; background: transparent; font-size: .78rem; color: var(--ink-soft); }
@@ -186,7 +186,7 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
 .go.pause { background: var(--panel); color: var(--ink); border: 1px solid var(--panel-line); box-shadow: none; }
 .go svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .small { border: 0; background: transparent; color: var(--ink-soft); font-size: .8rem; text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; min-height: 36px; padding: 0; }
-.toast { position: fixed; z-index: 30; left: 50%; top: calc(46px + env(safe-area-inset-top, 0px) + 10px); transform: translateX(-50%); background: var(--ink); color: var(--bg);
+.toast { position: absolute; z-index: 30; left: 50%; top: 10px; transform: translateX(-50%); background: var(--ink); color: var(--bg);
   font-size: .78rem; padding: 6px 12px; border-radius: 14px; box-shadow: var(--sh-md); width: max-content; max-width: calc(100vw - 32px); text-align: center; transition: opacity .3s; }
 @media (prefers-reduced-motion: reduce) { .in, .typing i { animation: none } .top, .prog i { transition: none } }
 </style>
@@ -298,7 +298,7 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
     // Once per book, so every book's first opening teaches the menu.
     if (!store.get("cg-menu-hint:" + D.id)) {
       store.set("cg-menu-hint:" + D.id, "1");
-      const toast = document.createElement("div"); toast.className = "toast"; toast.textContent = "Меню — торкніться краю екрана; сховати — торкніться тексту"; $("reader").append(toast);
+      const toast = document.createElement("div"); toast.className = "toast"; toast.textContent = "Меню — торкніться краю екрана; сховати — торкніться тексту"; stream.querySelector(".pic").append(toast);
       setTimeout(() => { toast.style.opacity = 0; }, 6600); setTimeout(() => toast.remove(), 7000);
     }
   }
@@ -422,12 +422,15 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
   }
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  const floor = () => document.querySelector(".links").getBoundingClientRect().top;
+  // The readable bottom is the top of the dock's fade: a line counts as shown only when it is fully above the fade,
+  // so a block or line that does not clear it opens the next page instead (owner 24.10.2026).
+  const floor = () => document.querySelector(".dock").getBoundingClientRect().top;
   const items = () => [...stream.querySelectorAll(":scope > .item")];
   // offsetTop/offsetHeight ignore the rise animation while measuring the real layout.
   const pageTop = () => S.page.offsetTop + S.offset;
   const bottom = (el) => el.offsetTop + el.offsetHeight;
-  const fits = (el) => bottom(el) <= pageTop() + floor() - 12 - (el.matches(".choice, .end-mark") ? 22 : 0);
+  // Text must clear the fade; a reply's bottom padding and border may sit in it.
+  const fits = (el) => el.matches(".narr, .row") && !el.querySelector(".typing") ? firstCut(el, pageTop() + floor() - 12 - el.offsetTop) === undefined : bottom(el) <= pageTop() + floor() - 12;
   // «Далі» and the choice it brings slide; every other realignment (resize, restore, whole chapter) jumps.
   // The slide is our own frame loop tied to S.gen, so cancel() stops it before any jump (a browser smooth scroll does not).
   function alignPage(smooth = false) {
@@ -461,13 +464,13 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
     if (fits(S.terminal)) {
       const transform = getComputedStyle(S.terminal).transform;
       const rise = transform === "none" ? 0 : new DOMMatrixReadOnly(transform).m42;
-      const space = floor() - 22 - S.terminal.getBoundingClientRect().bottom + rise;
+      const space = floor() - S.terminal.getBoundingClientRect().bottom + rise;
       // The choice sits above the dock with the text before it filling the screen, never under an empty gap.
       // Whole blocks only (the top is never cut); what is left under one block splits evenly around the choice.
       if (space > 2) {
         const want = pageTop() - space, back = items().find((el) => el.offsetTop >= want && el.offsetTop < pageTop());
         if (back) { S.page = back; S.offset = 0; }
-        const left = floor() - 22 - (S.terminal.offsetTop + S.terminal.offsetHeight - pageTop() + 12);
+        const left = floor() - (S.terminal.offsetTop + S.terminal.offsetHeight - pageTop() + 12);
         S.terminal.style.marginTop = `${Math.max(0, left / 2)}px`;
         return alignPage(smooth);
       }
@@ -484,29 +487,35 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
     items().forEach((item) => { item.style.clipPath = ""; });
     S.split = 0;
     if (room > 0 && (el.matches(".narr") || el === S.page && el.matches(".row"))) {
-      // Lines are measured from the block's own drawn top, so its rise animation (a few px of shift) cancels out.
-      const lh = parseFloat(getComputedStyle(el.querySelector(".bub") || el).lineHeight), drawn = el.getBoundingClientRect().top + scrollY;
-      const cut = textLines(el).map((y) => y - drawn).find((y) => y + lh > room);
+      const cut = firstCut(el, room);
       if (cut > 0) { S.split = cut; el.style.clipPath = `inset(0 0 ${el.offsetHeight - cut}px 0)`; }
     }
-    const hide = el !== S.page && room > 0 && !S.split && !(el.matches(".pic") && room >= floor() / 4);
-    items().forEach((item) => item.classList.toggle("later", room > 0 && (item.offsetTop > el.offsetTop || item === el && hide)));
+    // A block that starts inside the fade waits unseen too.
+    const hide = el && el !== S.page && !S.split && !(el.matches(".pic") && room >= floor() / 4);
+    items().forEach((item) => item.classList.toggle("later", !!el && (item.offsetTop > el.offsetTop || item === el && hide)));
   }
-  function textLines(el) {
+  // The first text line (from the block's top) that does not end within room; lines are measured from the block's own
+  // drawn top, so its rise animation (a few px of shift) cancels out.
+  function firstCut(el, room) {
+    const drawn = el.getBoundingClientRect().top + scrollY, lines = textLines(el);
+    const cut = textLines(el, "bottom").findIndex((y) => y - drawn > room);
+    return cut < 0 ? undefined : lines[cut] - drawn;
+  }
+  function textLines(el, edge = "top") {
     const text = el.querySelector(".bub") || el;
     const walker = document.createTreeWalker(text, NodeFilter.SHOW_TEXT);
     const lines = new Set(); let t;
     while ((t = walker.nextNode())) {
       const range = document.createRange(); range.selectNodeContents(t);
-      for (const r of range.getClientRects()) lines.add(r.top + scrollY);
+      for (const r of range.getClientRects()) lines.add(r[edge] + scrollY);
     }
     return [...lines].sort((a, b) => a - b);
   }
   // A tall text block continues on a whole text line, with the previous line under the fade.
   function continuation(el) {
-    const limit = pageTop() + floor() - 12 - 22;
+    const limit = pageTop() + floor() - 12;
     const next = textLines(el).filter((y) => y > pageTop() + 1 && y <= limit).pop();
-    return next === undefined ? S.offset + floor() - 12 - 22 : next - el.offsetTop;
+    return next === undefined ? S.offset + floor() - 12 : next - el.offsetTop;
   }
 
   // One node, retaining the existing typing pause and rise rhythm.
@@ -562,7 +571,7 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
     const pxPerMs = () => 24 * (+getComputedStyle(app).getPropertyValue("--fs") || 1) / (6 * SPEED[S.speed]);
     const reveal = async () => {
       while (gen === S.gen && !S.waiting && !S.done) {
-        if (bottom(last()) > scrollY + floor() - 34) { await sleep(120); continue; }
+        if (bottom(last()) > scrollY + floor() - 12) { await sleep(120); continue; }
         if (!(await showOne(gen))) return;
         await sleep(220);
       }
@@ -571,7 +580,7 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
     let t = performance.now(), y = scrollY;
     const frame = (now) => {
       if (gen !== S.gen) return;
-      const end = bottom(last()) - floor() + 34 + (S.waiting || S.done ? 22 : 0);
+      const end = bottom(last()) - floor() + 12 + (S.waiting || S.done ? 22 : 0);
       const base = Math.max(y, scrollY); y = Math.min(base + (now - t) * pxPerMs(), Math.max(base, end)); t = now;
       if (Math.abs(y - scrollY) >= 0.5) scrollTo(0, y);
       if ((S.waiting || S.done) && scrollY >= end - 1) { setAuto(false); return; }
@@ -586,7 +595,7 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
     items().forEach((el) => { el.classList.remove("later"); el.style.clipPath = ""; });
     const terminal = S.terminal;
     terminal.style.marginTop = "0px";
-    const limit = bottom(terminal) - (floor() - 12 - 22);
+    const limit = bottom(terminal) - (floor() - 12);
     S.page = items().find((el) => el.offsetTop >= limit) || terminal;
     S.offset = 0; S.preview = null; alignPage(); placeChoice(); sync();
   }
