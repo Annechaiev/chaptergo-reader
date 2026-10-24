@@ -32,6 +32,16 @@ for (const book of data.books) {
     // Iron rule (owner 23.10.2026): every chapter opens with its picture, right under the title.
     if (ch.episodes[0]?.nodes[ch.episodes[0].start]?.kind !== 'image') failures.push(`${book.title}: chapter ${ch.number} does not open with a picture`);
     report.push(`## ${ch.number}. ${ch.title} — ${nodes.length} nodes, ${pictures} pictures`);
+    // Owner 24.10.2026: «чтоб не больше 3-5 абзацев описания подряд». The reader's path through the chapter (first option at a choice):
+    // pictures, scene lines and captions do not end a run, a part boundary neither; a voice or a choice does.
+    let run = 0, longest = 0, steps = 0;
+    for (const e of ch.episodes) for (let n = e.nodes[e.start]; n && steps++ < 100000;
+      n = e.nodes[n.kind === 'choice' ? n.choices[0]?.targetNodeId : n.nextNodeId]) {
+      if (n.kind === 'image' || n.role === 'break' || n.role === 'plate') continue;
+      run = n.kind === 'message' && n.speaker === 'narrator' && n.presentation !== 'thought' && n.text ? run + 1 : 0;
+      longest = Math.max(longest, run);
+    }
+    if (longest > 5) failures.push(`${book.title}: chapter ${ch.number} has ${longest} narration bubbles in a row (law: at most 5)`);
     for (const n of nodes) {
       if (n.speaker && n.speaker !== 'narrator') lines[n.speaker] = (lines[n.speaker] || 0) + 1;
       if (n.kind === 'image') report.push('[picture]');
