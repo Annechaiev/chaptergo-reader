@@ -318,8 +318,9 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
       .filter((x) => x.voiceName != null && x.voiceName.trim() && x.speaker !== "system" && x.speaker !== "someone" && !x.speaker?.startsWith("role:"))
       .map((x) => x.voiceName));
     // The word edge is a captured group, not a lookbehind: iOS Safari before 16.4 rejects lookbehind and the reader would stop.
+    // shortcut: suffix stems miss changing roots and non-suffix languages; upgrade with a per-locale stemmer when needed.
     S.labels = [...labels].map((label) => [label, new RegExp("(^|[^\\p{L}])(" + label.trim().split(/\s+/u).map((w) =>
-      (w.length > 6 ? w.slice(0, -2) : w.length > 3 ? w.slice(0, -1) : w).replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\p{L}*").join("\\s+") + ")",
+      (w.length > 6 ? w.slice(0, -2) : w.length > 4 ? w.slice(0, -1) : w).replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + (w.length > 4 ? "\\p{L}{0,3}" : "")).join("\\s+") + ")(?=$|[^\\p{L}])",
       label[0] === label[0].toLowerCase() ? "iu" : "u")]);
     S.named = new Set();
     S.offset = 0; S.preview = S.terminal = null;

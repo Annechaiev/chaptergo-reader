@@ -6,15 +6,18 @@ let html;
 const onlyGaps = process.argv.includes('--gaps');
 // Identical vectors and JS string offsets to Studio's tests/chaptergo-first-mention.test.ts.
 const vectors = [
-  { name: "Ukrainian forms", labels: ["Очумєлов", "рудий городовик", "Хрюкін", "Єлдирін", "Прохор"], texts: ["Очумєлова зустрів Рудий городовик, Хрюкін, Єлдирін і Прохоре."], expected: [[[0, 9], [18, 33], [35, 41], [43, 50], [53, 60]]] },
-  { name: "once across lines", labels: ["Очумєлов"], texts: ["Очумєлов тут.", "Очумєлова знову."], expected: [[[0, 8]], []] },
-  { name: "bubble before narration", labels: ["Прохор"], texts: ["Гей, Прохоре!", "Прохор прийшов."], expected: [[[5, 12]], []] },
-  { name: "capitalised label", labels: ["Хрюкін"], texts: ["хрюкін тут.", "Хрюкін тут."], expected: [[], [[0, 6]]] },
-  { name: "lowercase label at sentence start", labels: ["рудий городовик"], texts: ["Рудий городовик тут."], expected: [[[0, 15]]] },
-  { name: "branch A", labels: ["Єлдирін"], texts: ["Єлдирін ліворуч.", "Єлдирін далі."], expected: [[[0, 7]], []] },
-  { name: "branch B", labels: ["Єлдирін"], texts: ["Тиша.", "Єлдирін праворуч."], expected: [[], [[0, 7]]] },
-  { name: "overlap keeps earliest", labels: ["рудий городовик", "городовик"], texts: ["рудий городовик.", "городовик."], expected: [[[0, 15]], [[0, 9]]] },
-  { name: "word edge and whitespace", labels: ["Прохор", "рудий городовик"], texts: ["НеПрохор. (Прохоре), рудий\nгородовика."], expected: [[[11, 18], [21, 37]]] },
+  { name: "Ukrainian forms", labels: ["Крамєлов", "сивий ліхтарник", "Бревін", "Таврінь", "Терван"], texts: ["Крамєлова зустрів Сивий ліхтарник, Бревін, Таврінь і Терване."], expected: [[[0, 9], [18, 33], [35, 41], [43, 50], [53, 60]]] },
+  { name: "once across lines", labels: ["Крамєлов"], texts: ["Крамєлов тут.", "Крамєлова знову."], expected: [[[0, 8]], []] },
+  { name: "bubble before narration", labels: ["Терван"], texts: ["Гей, Терване!", "Терван прийшов."], expected: [[[5, 12]], []] },
+  { name: "capitalised label", labels: ["Бревін"], texts: ["бревін тут.", "Бревін тут."], expected: [[], [[0, 6]]] },
+  { name: "lowercase label at sentence start", labels: ["сивий ліхтарник"], texts: ["Сивий ліхтарник тут."], expected: [[[0, 15]]] },
+  { name: "branch A", labels: ["Таврінь"], texts: ["Таврінь ліворуч.", "Таврінь далі."], expected: [[[0, 7]], []] },
+  { name: "branch B", labels: ["Таврінь"], texts: ["Тиша.", "Таврінь праворуч."], expected: [[], [[0, 7]]] },
+  { name: "overlap keeps earliest", labels: ["сивий ліхтарник", "ліхтарник"], texts: ["сивий ліхтарник.", "ліхтарник."], expected: [[[0, 15]], [[0, 9]]] },
+  { name: "word edge and whitespace", labels: ["Терван", "сивий ліхтарник"], texts: ["НеТерван. (Терване), сивий\nліхтарника."], expected: [[[11, 18], [21, 37]]] },
+  { name: "short labels stay whole", labels: ["Narl", "Дорн", "Лив"], texts: ["Narch. Дорна. Ливада.", "Narl Дорн Лив."], expected: [[], [[0, 4], [5, 9], [10, 13]]] },
+  { name: "bounded suffix", labels: ["Терван"], texts: ["Тервахолодний.", "Терване."], expected: [[], [[0, 7]]] },
+  { name: "colliding labels consumed once", labels: ["Дорн", "Дорла"], texts: ["Дорла.", "Дорн.", "Дорла."], expected: [[[0, 5]], [[0, 4]], []] },
 ];
 
 function marksVectors() {
@@ -37,19 +40,19 @@ function marksVectors() {
   const context = { S: {}, D: { speakers: {} }, chapter: () => ({ episodes: [{ nodes: {
     a: { speaker: 'system', voiceName: 'Система' }, b: { speaker: 'someone', voiceName: 'Хтось' },
     c: { speaker: 'role:guard', voiceName: 'Вартовий' }, d: { speaker: 'person', voiceName: null },
-    system: { speaker: 'person', voiceName: 'Прохор' },
+    system: { speaker: 'person', voiceName: 'Терван' },
   } }] }), esc: (s) => s };
   vm.createContext(context); vm.runInContext(init[0] + marks[0], context);
-  assert.equal(context.marks('Система Хтось Вартовий Прохор'), 'Система Хтось Вартовий <b class="first-name">Прохор</b>');
+  assert.equal(context.marks('Система Хтось Вартовий Терван'), 'Система Хтось Вартовий <b class="first-name">Терван</b>');
   console.log('VECTOR excluded keys: [[[23,29]]]');
   const allEpisodes = { S: {}, chapter: () => ({ episodes: [
-    { nodes: { a: { speaker: 'person', voiceName: 'Прохор' } } },
-    { nodes: { b: { speaker: 'guard', voiceName: 'Єлдирін' }, c: { speaker: 'person', voiceName: 'Прохор' } } },
+    { nodes: { a: { speaker: 'person', voiceName: 'Терван' } } },
+    { nodes: { b: { speaker: 'guard', voiceName: 'Таврінь' }, c: { speaker: 'person', voiceName: 'Терван' } } },
   ] }), esc: (s) => s };
   vm.createContext(allEpisodes);
   for (let chapter = 0; chapter < 2; chapter++) {
     vm.runInContext('(function () {' + init[0] + marks[0] + '; this.marks = marks; }).call(this);', allEpisodes);
-    assert.equal(allEpisodes.marks('Прохор і Єлдирін.'), '<b class="first-name">Прохор</b> і <b class="first-name">Єлдирін</b>.');
+    assert.equal(allEpisodes.marks('Терван і Таврінь.'), '<b class="first-name">Терван</b> і <b class="first-name">Таврінь</b>.');
   }
   console.log('VECTOR all episodes + chapter reset: [[[0,6],[9,16]]] twice');
   const escaped = { S: {}, chapter: () => ({ episodes: [{ nodes: { a: { speaker: 'person', voiceName: 'А.*' } } }] }), esc: (s) => s };
@@ -57,19 +60,19 @@ function marksVectors() {
   assert.equal(escaped.marks('А.* тут'), '<b class="first-name">А.*</b> тут');
   console.log('VECTOR regex escaping/no lookbehind: [[[0,3]]]');
   // Run the actual render()/line() functions: excluded node kinds and the reader's own pick never consume a mark.
-  const rendered = [], nodeContext = { S: { shown: 0, rendered: 0 }, chapter: () => ({ episodes: [{ nodes: { a: { speaker: 'person', voiceName: 'Прохор' } } }] }),
+  const rendered = [], nodeContext = { S: { shown: 0, rendered: 0 }, chapter: () => ({ episodes: [{ nodes: { a: { speaker: 'person', voiceName: 'Терван' } } }] }),
     esc: (s) => s, avatar: () => '', chooser: () => null,
     add: (html) => { rendered.push(html); return { querySelectorAll: () => [] }; } };
   const render = html.match(/  function render\(n\) \{[\s\S]*?(?=  \/\/ Moves the pointer)/)[0];
   const line = html.match(/  const line = \(key, name, text,.*?;\n/)[0];
-  vm.createContext(nodeContext); vm.runInContext(init[0] + marks[0] + line + render + '\nthis.readersPick = () => line("person", "", "Прохор", "picked");', nodeContext);
-  nodeContext.render({ kind: 'choice', prompt: 'Прохор', choices: [] });
+  vm.createContext(nodeContext); vm.runInContext(init[0] + marks[0] + line + render + '\nthis.readersPick = () => line("person", "", "Терван", "picked");', nodeContext);
+  nodeContext.render({ kind: 'choice', prompt: 'Терван', choices: [] });
   nodeContext.readersPick();
-  nodeContext.render({ kind: 'reveal', fact: { quote: 'Прохор' } });
-  for (const role of ['break', 'plate']) nodeContext.render({ kind: 'message', speaker: 'narrator', role, text: 'Прохор' });
-  nodeContext.render({ kind: 'ending', speaker: 'narrator', text: 'Прохоре!' });
+  nodeContext.render({ kind: 'reveal', fact: { quote: 'Терван' } });
+  for (const role of ['break', 'plate']) nodeContext.render({ kind: 'message', speaker: 'narrator', role, text: 'Терван' });
+  nodeContext.render({ kind: 'ending', speaker: 'narrator', text: 'Терване!' });
   assert.equal(rendered.filter(s => s.includes('first-name')).length, 1);
-  assert.equal(rendered.at(-1), '<b class="first-name">Прохоре</b>!');
+  assert.equal(rendered.at(-1), '<b class="first-name">Терване</b>!');
   console.log('VECTOR message/ending scan only: line 5 [[0,7]]');
   assert.ok(!/mode\(\)|m-pages|m-chat|mockup_data/.test(html), 'pages is the only reading mode');
   let frame;
@@ -88,7 +91,7 @@ const message = (text, speaker = 'narrator', extra = {}) => ({ kind: 'message', 
 function fixture(nodes, id = 'pages-test') {
   const entries = nodes.map((n, i) => [`n${i}`, { ...n, nodeId: `n${i}`, nextNodeId: `n${i + 1}` }]);
   const book = { id, title: 'Pages test', author: null,
-    img: { picture: 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3C/svg%3E' }, imageSizes: { picture: [100, 100] }, speakers: { person: { name: 'Прохор', asset: null } },
+    img: { picture: 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3C/svg%3E' }, imageSizes: { picture: [100, 100] }, speakers: { person: { name: 'Терван', asset: null } },
     chapters: [{ number: 1, title: 'Розділ 1. Перевірка', episodes: [{ start: 'n0', nodes: Object.fromEntries(entries) }] }] };
   // The build's plain-copy asset transfer tolerates a fixture with no pictures.
   return html.replace(/<div class="static" id="static">[\s\S]*?(?=<script type="application\/json" id="data">)/, '<div id="static"></div>')
@@ -110,11 +113,11 @@ async function browserCases() {
         await p.evaluate((saved) => { localStorage.clear(); localStorage.setItem('cg-menu-hint:pages-test', '1'); if (saved) localStorage.setItem('cg-position:pages-test', JSON.stringify(saved)); }, saved);
         await p.reload(); await p.evaluate(() => document.fonts.ready); await p.locator('[data-book]').tap(); await idle();
       };
-      const nodes = Array.from({ length: 35 }, (_, i) => i % 3 === 0 ? message(`Прохоре, репліка ${i}.`, 'person', { voiceName: 'Прохор' }) : message(`Прохор іде. Абзац ${i}. ` + 'Тихо навколо. '.repeat(8)));
-      nodes.push({ kind: 'ending', speaker: 'narrator', text: 'Прохор зупинився.' });
+      const nodes = Array.from({ length: 35 }, (_, i) => i % 3 === 0 ? message(`Терване, репліка ${i}.`, 'person', { voiceName: 'Терван' }) : message(`Терван іде. Абзац ${i}. ` + 'Тихо навколо. '.repeat(8)));
+      nodes.push({ kind: 'ending', speaker: 'narrator', text: 'Терван зупинився.' });
       if (!onlyGaps) {
       for (const speaker of ['narrator', 'person']) {
-        await open([message('Довгий абзац. '.repeat(180), speaker, speaker === 'person' ? { voiceName: 'Прохор' } : {}),
+        await open([message('Довгий абзац. '.repeat(180), speaker, speaker === 'person' ? { voiceName: 'Терван' } : {}),
           { kind: 'ending', speaker: 'narrator', text: 'Завершення.' }]);
         await p.locator('#go').tap(); await idle();
         const overflow = await p.evaluate(() => {
@@ -155,7 +158,7 @@ async function browserCases() {
         await p.locator('#go').tap(); await idle();
       }
       assert.equal(await p.locator('#go').textContent(), 'Кінець глави');
-      assert.match(await view(), /Прохор зупинився/, `${dev}: end includes story text`);
+      assert.match(await view(), /Терван зупинився/, `${dev}: end includes story text`);
       assert.equal(await p.locator('.first-name').count(), 1, `${dev}: name marked once across pages`);
       const saved = await p.evaluate(() => JSON.parse(localStorage.getItem('cg-position:pages-test')));
       assert.ok(Number.isInteger(saved.block) && Number.isInteger(saved.line), `${dev}: saved block + line`);
@@ -166,8 +169,8 @@ async function browserCases() {
       }
       // Measure letter-cap tops and last baselines, rather than invisible line-box leading.
       // Native text-box and the forced fallback both use the actual reader's rendering and font sizes.
-      const spacingNodes = [message('НАРАЦІЯ'), message('РЕПЛІКА', 'person', { voiceName: 'Прохор' }),
-        message('ДУМКА', 'person', { voiceName: 'Прохор', presentation: 'thought' }),
+      const spacingNodes = [message('НАРАЦІЯ'), message('РЕПЛІКА', 'person', { voiceName: 'Терван' }),
+        message('ДУМКА', 'person', { voiceName: 'Терван', presentation: 'thought' }),
         message('МІСЦЕ', 'narrator', { role: 'plate' }), { kind: 'image', asset: 'picture' }, { kind: 'ending', speaker: 'narrator', text: 'ОСТАННІЙ РЯДОК' }];
       await open(spacingNodes); await p.locator('#small').tap(); await idle();
       const gaps = await p.evaluate((onlyGaps) => {
