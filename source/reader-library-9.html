@@ -40,7 +40,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
 button:focus-visible, a:focus-visible { outline: 2px solid var(--ac); outline-offset: 2px; }
 .library { max-width: 34rem; margin: 0 auto; padding: max(24px, env(safe-area-inset-top, 0px)) 20px calc(28px + env(safe-area-inset-bottom, 0px)); }
 .library h1 { margin: 0 0 20px; font: 500 1.5rem var(--f-serif); }
-.library select { display: block; max-width: 100%; margin: 0 0 20px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--bubble); color: var(--ink); font: .82rem var(--f-sans); }
+.lib-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 20px; }
+.lib-head h1 { margin: 0; }
+.library select { flex: none; margin: 0; padding: 4px 8px; border: 1px solid var(--line); border-radius: 9px; background: var(--bubble); color: var(--ink); font: .82rem var(--f-sans); }
 .library select:focus-visible { outline: 2px solid var(--ac); outline-offset: 2px; }
 .book-card { width: 100%; display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 14px; align-items: center; text-align: left;
   border: 1px solid var(--line); border-radius: 16px; background: var(--bubble); padding: 14px; margin-bottom: 10px; box-shadow: var(--sh-sm); }
@@ -363,7 +365,7 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
     savePosition(); cancel(); S.auto = false; hideChrome(); S.page = null;
     $("reader").hidden = true; $("library").hidden = false;
     const matching = books.map((book, i) => [book, i]).filter(([book]) => (book.lang || "uk") === language);
-    $("library").innerHTML = `<h1>${t("Бібліотека")}</h1><select id="language" aria-label="${t("Мова")}">${Object.entries(languages).map(([code, name]) => `<option value="${code}" lang="${code}" ${code === language ? "selected" : ""}>${name}</option>`).join("")}</select>` + matching.map(([book, i]) => {
+    $("library").innerHTML = `<div class="lib-head"><h1>${t("Бібліотека")}</h1><select id="language" aria-label="${t("Мова")}">${Object.entries(languages).map(([code, name]) => `<option value="${code}" lang="${code}" ${code === language ? "selected" : ""}>${name}</option>`).join("")}</select></div>` + matching.map(([book, i]) => {
       const saved = position(book), cover = book.chapters.map(firstPicture).find(Boolean);
       const action = book.pending ? t("Готується") : saved ? `${t("Продовжити з розділу")} ${book.chapters[saved.ch].number || saved.ch + 1}` : t("Читати");
       return `<button class="book-card" data-book="${i}" ${book.pending ? "disabled" : ""}>${cover ? `<img class="book-cover" src="${book.img[cover.asset]}" alt="">` : '<span class="book-cover" aria-hidden="true">◌</span>'}<span class="book-info"><span class="book-head"><b>${esc(book.title)}</b>${book.genres?.length ? `<span class="book-tags">${book.genres.map((g) => `<span class="book-tag">${esc(translated(genres, g))}</span>`).join("")}</span>` : ""}</span><span class="book-meta">${book.author ? `${esc(book.author)}<br>` : ""}${book.pending ? t("Розділи готуються") : `${t("Розділів:")} ${book.chapters.length}`}</span><span class="book-action">${action}</span></span></button>${saved ? `<button class="small restart" data-restart="${i}">${t("Почати спочатку")}</button>` : ""}`;
