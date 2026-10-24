@@ -117,7 +117,8 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--ac); outline-of
   #reader .ch-kicker:has(+ .ch-title:empty) { margin-bottom: -.241em; }
 }
 figure.pic { position: relative; margin: 6px 0; }
-figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; border-radius: 16px; box-shadow: var(--sh-card); }
+/* Owner 24.10.2026: the space above and below a picture must look equal; the long card shadow under it read as a smaller gap below. */
+figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; border-radius: 16px; box-shadow: var(--sh-sm); }
 .choice { border: 1px solid var(--line); background: var(--chrome); border-radius: 18px; padding: 14px; display: grid; gap: 10px; }
 .choice p { margin: 0; font-family: var(--f-serif); font-style: italic; color: var(--ink-soft); }
 .chooser { display: flex; align-items: center; gap: 8px; font-size: .78rem; font-weight: 600; color: var(--ac); }
