@@ -62,6 +62,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--ac); outline-of
   padding-block: 12px 100dvh; display: flex; flex-direction: column; gap: 12px; }
 .ch-title { font-family: var(--f-serif); font-weight: 500; font-size: calc(1.34rem * var(--fs)); line-height: 1.25; text-wrap: balance; margin: 10px 0 4px; }
 .ch-kicker { font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0; }
+.brk { width: 5rem; height: 0; margin: 0 auto; border: 0; border-top: 2px solid var(--line); }
 .plate { display: flex; align-items: center; gap: 10px; margin: 18px 0 10px; font-family: var(--f-sans); font-size: calc(.78rem * var(--fs)); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ac); text-align: center; }
 .plate::before, .plate::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 .narr { font-family: var(--f-sans); font-style: normal; font-weight: 400; font-size: calc(1.04rem * var(--fs)); line-height: 1.5; color: color-mix(in srgb, var(--ink) 88%, var(--bg)); margin: 2px 0 2px 41px; text-align: left; }
@@ -98,6 +99,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--ac); outline-of
 #reader .row .who { text-box: trim-start cap alphabetic; }
 #reader .narr { margin-block: 0; text-box: trim-both cap alphabetic; }
 #reader .plate { margin: 0; }
+#reader .brk { margin: 0 auto; }
 #reader .plate span { text-box: trim-both cap alphabetic; }
 #reader figure.pic { margin: 0; }
 #reader .end-mark { padding: 0; text-box: trim-both cap alphabetic; }
@@ -409,6 +411,8 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
     }
     S.shown++;
     // A scene caption reads as the scene's heading, not as narration.
+    // A scene break shows as the site shows it (cg-reader-break): a short centred line (owner 24.10: «такой линией разрешаю»).
+    if (n.role === "break") return add("", "hr", "brk in");
     if (n.role === "plate") return add(`<span>${esc(n.text)}</span>`, "p", "plate in");
     const mark = (n.kind === "message" || n.kind === "ending") && n.role !== "break";
     if (n.speaker === "narrator" && n.presentation !== "thought") return add(mark ? marks(n.text) : esc(n.text), "p", "narr in");
