@@ -40,6 +40,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 button:focus-visible, a:focus-visible { outline: 2px solid var(--ac); outline-offset: 2px; }
 .library { max-width: 34rem; margin: 0 auto; padding: max(24px, env(safe-area-inset-top, 0px)) 20px calc(28px + env(safe-area-inset-bottom, 0px)); }
 .library h1 { margin: 0 0 20px; font: 500 1.5rem var(--f-serif); }
+.library select { display: block; max-width: 100%; margin: 0 0 20px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--bubble); color: var(--ink); font: .82rem var(--f-sans); }
+.library select:focus-visible { outline: 2px solid var(--ac); outline-offset: 2px; }
 .book-card { width: 100%; display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 14px; align-items: center; text-align: left;
   border: 1px solid var(--line); border-radius: 16px; background: var(--bubble); padding: 14px; margin-bottom: 10px; box-shadow: var(--sh-sm); }
 .book-cover { width: 80px; height: 110px; object-fit: cover; border-radius: 9px; background: var(--slot); display: grid; place-items: center; color: var(--muted); }
@@ -255,6 +257,85 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
   const SPEED = { slow: 400, normal: 280, fast: 180 }; // ms per word in Auto, as the studio reader
   const S = { ch: 0, ep: 0, id: null, auto: false, speed: "normal", running: false, flush: false, gen: 0, waiting: false, done: false, shown: 0, total: 0, page: null, offset: 0, preview: null, terminal: null };
   const store = { get(k) { try { return localStorage.getItem(k) } catch { return null } }, set(k, v) { try { localStorage.setItem(k, v) } catch {} } };
+  const languages = { uk: "Українська", ru: "Русский", en: "English", es: "Español" };
+  // Ukrainian keeps the original copy, including the owner's prototype guide.
+  const translations = {
+    "Читалка ChapterGo": ["Читалка ChapterGo", "ChapterGo Reader", "Lector ChapterGo"],
+    "Бібліотека": ["Библиотека", "Library", "Biblioteca"],
+    "Мова": ["Язык", "Language", "Idioma"],
+    "Цією мовою ще немає книг": ["На этом языке пока нет книг", "No books in this language yet", "Aún no hay libros en este idioma"],
+    "← Книги": ["← Книги", "← Books", "← Libros"],
+    "Зміст": ["Оглавление", "Contents", "Índice"],
+    "Налаштування читання": ["Настройки чтения", "Reading settings", "Ajustes de lectura"],
+    "Авто": ["Авто", "Auto", "Auto"],
+    "Швидкість авто": ["Скорость авто", "Auto speed", "Velocidad automática"],
+    "Повільно": ["Медленно", "Slow", "Lenta"],
+    "Звичайно": ["Обычная", "Normal", "Normal"],
+    "Швидко": ["Быстро", "Fast", "Rápida"],
+    "Розмір тексту": ["Размер текста", "Text size", "Tamaño del texto"],
+    "Тема": ["Тема", "Theme", "Tema"],
+    "Папір": ["Бумага", "Paper", "Papel"],
+    "Світла": ["Светлая", "Light", "Claro"],
+    "Темна": ["Тёмная", "Dark", "Oscuro"],
+    "Готується": ["Скоро", "Coming soon", "Próximamente"],
+    "Продовжити з розділу": ["Продолжить с главы", "Resume chapter", "Seguir desde el capítulo"],
+    "Читати": ["Читать", "Read", "Leer"],
+    "Розділи готуються": ["Главы готовятся", "Chapters coming soon", "Capítulos próximamente"],
+    "Розділів:": ["Глав:", "Chapters:", "Capítulos:"],
+    "Почати спочатку": ["Начать сначала", "Start over", "Volver a empezar"],
+    "Меню — торкніться краю екрана; сховати — торкніться тексту": ["Меню — коснись края экрана; скрыть — коснись текста", "Tap the screen edge for the menu; tap the text to hide it", "Toca el borde para abrir el menú; toca el texto para cerrarlo"],
+    "Думка": ["Мысль", "Thought", "Pensamiento"],
+    "Вибір:": ["Выбор:", "Choice:", "Elección:"],
+    "Кінець:": ["Конец:", "End:", "Fin:"],
+    "Розділ": ["Глава", "Chapter", "Capítulo"],
+    "Оберіть відповідь вище": ["Выбери ответ выше", "Choose an answer above", "Elige una respuesta arriba"],
+    "Кінець глави": ["Конец главы", "End of chapter", "Fin del capítulo"],
+    "Пауза": ["Пауза", "Pause", "Pausa"],
+    "Далі": ["Далее", "Next", "Siguiente"],
+    "В бібліотеку": ["В библиотеку", "Back to library", "Volver a la biblioteca"],
+    "Показати всю главу": ["Показать всю главу", "Show full chapter", "Ver capítulo completo"],
+    "До бібліотеки": ["В библиотеку", "Back to library", "Ir a la biblioteca"],
+    "Наступна глава": ["Следующая глава", "Next chapter", "Siguiente capítulo"],
+    "Ви тут": ["Ты здесь", "You are here", "Estás aquí"],
+    "Прочитано": ["Прочитано", "Read", "Leído"],
+    "Это макет новой читалки. Попробуй по порядку:": ["Это макет новой читалки. Попробуй по порядку:", "This is a preview of the new reader. Try these steps:", "Esta es una vista previa del nuevo lector. Prueba estos pasos:"],
+    "Нажми «Далі» внизу — появятся следующие реплики. Кнопка всегда на одном месте.": ["Нажми «Далее» внизу — появятся следующие реплики. Кнопка всегда на одном месте.", "Tap ‘Next’ at the bottom to see more lines. The button stays in the same place.", "Toca «Siguiente» abajo para ver más texto. El botón siempre está en el mismo sitio."],
+    "Тапни по самому краю экрана, слева или справа — сверху появится меню: «Зміст» и «Aa». Закрывается только тапом по тексту.": ["Коснись самого края экрана слева или справа — сверху появится меню: «Оглавление» и «Aa». Закрывается только касанием текста.", "Tap the left or right edge of the screen to open the top menu: ‘Contents’ and ‘Aa’. Tap the text to close it.", "Toca el borde izquierdo o derecho para abrir el menú superior: «Índice» y «Aa». Toca el texto para cerrarlo."],
+    "В «Aa» — Авто, скорость (Повільно / Звичайно / Швидко), размер текста и тема.": ["В «Aa» — Авто, скорость (Медленно / Обычная / Быстро), размер текста и тема.", "In ‘Aa’: Auto, speed (Slow / Normal / Fast), text size and theme.", "En «Aa»: Auto, velocidad (Lenta / Normal / Rápida), tamaño del texto y tema."],
+    "Над кнопкой: слева «Показати всю главу», справа серая «Наступна глава» — синеет, когда глава прочитана. Описания — короткие вставки курсивом (в макете текст пока старый, длинный).": ["Над кнопкой: слева «Показать всю главу», справа серая «Следующая глава» — синеет, когда глава прочитана. Описания — короткие вставки курсивом (в макете текст пока старый, длинный).", "Above the button: ‘Show full chapter’ on the left; ‘Next chapter’ on the right turns blue when you finish the chapter. Descriptions are short italic passages (this preview still has the old, longer text).", "Encima del botón: «Ver capítulo completo» a la izquierda; «Siguiente capítulo» a la derecha se vuelve azul al terminar el capítulo. Las descripciones son pasajes breves en cursiva (esta vista previa aún tiene el texto anterior, más largo)."],
+    "Стиль картинок — выбери А, Б или В": ["Стиль картинок — выбери А, Б или В", "Picture style — choose A, B or C", "Estilo de imágenes: elige A, B o C"],
+    "Скрыть подсказку": ["Скрыть подсказку", "Hide guide", "Ocultar ayuda"],
+    "А — сейчас (Klein, 21.10): тёмное масло": ["А — сейчас (Klein, 21.10): тёмное масло", "A — current (Klein, 21.10): dark oils", "A — actual (Klein, 21.10): óleo oscuro"],
+    "Б — 28.09: светлое масло, тёплый свет": ["Б — 28.09: светлое масло, тёплый свет", "B — 28.09: light oils, warm light", "B — 28.09: óleo claro, luz cálida"],
+    "В — 24.09: мягкая иллюстрация": ["В — 24.09: мягкая иллюстрация", "C — 24.09: soft illustration", "C — 24.09: ilustración suave"]
+  };
+  const genres = {
+    "Класика": ["Классика", "Classics", "Clásicos"], "Гумор": ["Юмор", "Humor", "Humor"],
+    "Фентезі": ["Фэнтези", "Fantasy", "Fantasía"], "Пригоди": ["Приключения", "Adventure", "Aventuras"],
+    "Казка": ["Сказка", "Fairy tale", "Cuento"], "Любовний роман": ["Любовный роман", "Romance", "Romance"],
+    "ЛітРПГ": ["ЛитРПГ", "LitRPG", "LitRPG"]
+  };
+  const savedLanguage = store.get("cg-language");
+  let language = Object.hasOwn(languages, savedLanguage) ? savedLanguage : "uk";
+  const translated = (map, text) => language === "uk" ? text : map[text]?.[["ru", "en", "es"].indexOf(language)] ?? text;
+  const t = (text) => translated(translations, text);
+  const chapterTitle = (ch) => language === "uk" ? ch.title : ch.title.replace(/^Розділ(?: \d+| перший)?(?=\. |$)/u, `${t("Розділ")} ${ch.number}`);
+  const staticText = [], staticAttributes = [];
+  const walker = document.createTreeWalker(app, NodeFilter.SHOW_TEXT);
+  while (walker.nextNode()) {
+    const node = walker.currentNode, text = node.textContent.trim();
+    if (Object.hasOwn(translations, text)) staticText.push([node, node.textContent, text]);
+  }
+  app.querySelectorAll("[aria-label], [title]").forEach((el) => {
+    for (const attr of ["aria-label", "title"]) if (el.hasAttribute(attr)) staticAttributes.push([el, attr, el.getAttribute(attr)]);
+  });
+  function localize() {
+    document.documentElement.lang = language;
+    document.title = t("Читалка ChapterGo");
+    staticText.forEach(([node, original, text]) => { node.textContent = original.replace(text, t(text)); });
+    staticAttributes.forEach(([el, attr, text]) => el.setAttribute(attr, t(text)));
+  }
+  localize();
   const positions = {};
   function position(book) {
     if (positions[book.id]) return positions[book.id];
@@ -281,11 +362,13 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
   function showLibrary() {
     savePosition(); cancel(); S.auto = false; hideChrome(); S.page = null;
     $("reader").hidden = true; $("library").hidden = false;
-    $("library").innerHTML = '<h1>Бібліотека</h1>' + books.map((book, i) => {
+    const matching = books.map((book, i) => [book, i]).filter(([book]) => (book.lang || "uk") === language);
+    $("library").innerHTML = `<h1>${t("Бібліотека")}</h1><select id="language" aria-label="${t("Мова")}">${Object.entries(languages).map(([code, name]) => `<option value="${code}" lang="${code}" ${code === language ? "selected" : ""}>${name}</option>`).join("")}</select>` + matching.map(([book, i]) => {
       const saved = position(book), cover = book.chapters.map(firstPicture).find(Boolean);
-      const action = book.pending ? "Готується" : saved ? `Продовжити з розділу ${book.chapters[saved.ch].number || saved.ch + 1}` : "Читати";
-      return `<button class="book-card" data-book="${i}" ${book.pending ? "disabled" : ""}>${cover ? `<img class="book-cover" src="${book.img[cover.asset]}" alt="">` : '<span class="book-cover" aria-hidden="true">◌</span>'}<span class="book-info"><span class="book-head"><b>${esc(book.title)}</b>${book.genres?.length ? `<span class="book-tags">${book.genres.map((g) => `<span class="book-tag">${esc(g)}</span>`).join("")}</span>` : ""}</span><span class="book-meta">${book.author ? `${esc(book.author)}<br>` : ""}${book.pending ? "Розділи готуються" : `Розділів: ${book.chapters.length}`}</span><span class="book-action">${action}</span></span></button>${saved ? `<button class="small restart" data-restart="${i}">Почати спочатку</button>` : ""}`;
-    }).join("");
+      const action = book.pending ? t("Готується") : saved ? `${t("Продовжити з розділу")} ${book.chapters[saved.ch].number || saved.ch + 1}` : t("Читати");
+      return `<button class="book-card" data-book="${i}" ${book.pending ? "disabled" : ""}>${cover ? `<img class="book-cover" src="${book.img[cover.asset]}" alt="">` : '<span class="book-cover" aria-hidden="true">◌</span>'}<span class="book-info"><span class="book-head"><b>${esc(book.title)}</b>${book.genres?.length ? `<span class="book-tags">${book.genres.map((g) => `<span class="book-tag">${esc(translated(genres, g))}</span>`).join("")}</span>` : ""}</span><span class="book-meta">${book.author ? `${esc(book.author)}<br>` : ""}${book.pending ? t("Розділи готуються") : `${t("Розділів:")} ${book.chapters.length}`}</span><span class="book-action">${action}</span></span></button>${saved ? `<button class="small restart" data-restart="${i}">${t("Почати спочатку")}</button>` : ""}`;
+    }).join("") + (matching.length ? "" : `<p role="status">${t("Цією мовою ще немає книг")}</p>`);
+    $("language").onchange = (e) => { language = e.target.value; store.set("cg-language", language); localize(); showLibrary(); $("language").focus(); };
     $("library").querySelectorAll("[data-book]").forEach(b => b.onclick = () => openBook(books[+b.dataset.book]));
     // Forgets the saved place, so the book opens at chapter one.
     $("library").querySelectorAll("[data-restart]").forEach(b => b.onclick = () => { const book = books[+b.dataset.restart]; delete positions[book.id]; store.set(`cg-position:${book.id}`, ""); openBook(book); });
@@ -296,7 +379,7 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
     D = book; $("library").hidden = true; $("reader").hidden = false;
     $("ttlName").textContent = D.title;
     $("styles").innerHTML = D.styles ? '<div class="lbl" style="margin:0">Лея, Адриан, Ден</div>' +
-      styleRows.map(([k, t]) => `<div class="style"><h4>${t}</h4><div class="faces">${D.styles[k].map((src) => `<img src="${src}" alt="">`).join("")}</div></div>`).join("") : "";
+      styleRows.map(([k, title]) => `<div class="style"><h4>${t(title)}</h4><div class="faces">${D.styles[k].map((src) => `<img src="${src}" alt="">`).join("")}</div></div>`).join("") : "";
     $("styles").closest("details").hidden = !D.styles;
     const saved = position(D); startChapter(saved?.ch || 0, saved);
     // Opening a book introduces fonts the library did not use; Safari needs their final layout.
@@ -304,7 +387,7 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
     // Once per book, so every book's first opening teaches the menu.
     if (!store.get("cg-menu-hint:" + D.id)) {
       store.set("cg-menu-hint:" + D.id, "1");
-      const toast = document.createElement("div"); toast.className = "toast"; toast.textContent = "Меню — торкніться краю екрана; сховати — торкніться тексту"; stream.querySelector(".pic").append(toast);
+      const toast = document.createElement("div"); toast.className = "toast"; toast.textContent = t("Меню — торкніться краю екрана; сховати — торкніться тексту"); stream.querySelector(".pic").append(toast);
       setTimeout(() => { toast.style.opacity = 0; }, 6600); setTimeout(() => toast.remove(), 7000);
     }
   }
@@ -337,7 +420,7 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
     S.named = new Set();
     S.offset = 0; S.preview = S.terminal = null;
     stream.querySelectorAll(".item").forEach((el) => el.remove());
-    const [num, ...rest] = chapter().title.split(". ");
+    const [num, ...rest] = chapterTitle(chapter()).split(". ");
     S.page = add(`<p class="ch-kicker">${num}</p><h1 class="ch-title">${rest.join(". ")}</h1>`, "div");
     S.opening = openingPicture(chapter());
     if (S.opening) picture(S.opening);
@@ -379,7 +462,7 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
   }
   const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const avatar = (key, name) => { const sp = D.speakers[key]; return sp?.asset ? `<img class="ava" src="${D.img[sp.asset]}" alt="">` : `<span class="ava">${esc((sp?.name || name || "?")[0])}</span>`; };
-  const line = (key, name, text, cls = "", thought = false, mark = false) => add(`<span class="who">${thought ? '<span class="thought-marker" role="img" aria-label="Думка">◌ </span>' : ""}${esc(name)}</span>${avatar(key, name)}<div class="bub">${thought ? '<i class="puff" aria-hidden="true"></i>' : ""}${mark ? marks(text) : esc(text)}</div>`, "div", `row in ${cls}`);
+  const line = (key, name, text, cls = "", thought = false, mark = false) => add(`<span class="who">${thought ? `<span class="thought-marker" role="img" aria-label="${t("Думка")}">◌ </span>` : ""}${esc(name)}</span>${avatar(key, name)}<div class="bub">${thought ? '<i class="puff" aria-hidden="true"></i>' : ""}${mark ? marks(text) : esc(text)}</div>`, "div", `row in ${cls}`);
   function picture(n) {
     const [width, height] = D.imageSizes[n.asset];
     return add(`<img src="${D.img[n.asset]}" width="${width}" height="${height}" alt="">`, "figure", "pic in");
@@ -402,7 +485,7 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
     }
     if (n.kind === "choice") {
       S.waiting = true;
-      const el = add(`${chooser(n) ? `<div class="chooser">${avatar(chooser(n))}Вибір: ${esc(chooserName(n))}</div>` : ""}<p>${esc(n.prompt)}</p><div class="opts">${n.choices.map((c, i) => `<button class="opt" data-choice="${i}">${esc(c.label)}</button>`).join("")}</div>`, "div", "choice in");
+      const el = add(`${chooser(n) ? `<div class="chooser">${avatar(chooser(n))}${t("Вибір:")} ${esc(chooserName(n))}</div>` : ""}<p>${esc(n.prompt)}</p><div class="opts">${n.choices.map((c, i) => `<button class="opt" data-choice="${i}">${esc(c.label)}</button>`).join("")}</div>`, "div", "choice in");
       S.terminal = el;
       el.querySelectorAll(".opt").forEach((b) => b.onclick = (e) => {
         e.stopPropagation(); pick(el, n, n.choices[+b.dataset.choice]);
@@ -424,7 +507,7 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
     if (n.kind === "choice") return false;
     if (n.kind === "ending") {
       if (S.ep + 1 < chapter().episodes.length) { S.ep++; S.id = chapter().episodes[S.ep].start; return true; }
-      S.done = true; S.terminal = add(`· Кінець: ${esc(chapter().title.split(". ")[0])} ·`, "div", "end-mark in"); return false;
+      S.done = true; S.terminal = add(`· ${t("Кінець:")} ${esc(chapterTitle(chapter()).split(". ")[0])} ·`, "div", "end-mark in"); return false;
     }
     S.id = n.nextNodeId; return true;
   }
@@ -613,11 +696,11 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
     const ready = terminalVisible(), done = S.done && ready, waiting = S.waiting && ready;
     const last = done && S.ch + 1 >= D.chapters.length;
     go.disabled = waiting || done; go.classList.toggle("pause", S.auto && !waiting && !done);
-    go.innerHTML = waiting ? "Оберіть відповідь вище" : done ? "Кінець глави" : S.auto ? "Пауза" : "Далі";
-    small.textContent = done ? "В бібліотеку" : "Показати всю главу";
-    $("next").disabled = !done; $("next").innerHTML = (last ? "До бібліотеки" : "Наступна глава") + ARROW;
+    go.innerHTML = t(waiting ? "Оберіть відповідь вище" : done ? "Кінець глави" : S.auto ? "Пауза" : "Далі");
+    small.textContent = t(done ? "В бібліотеку" : "Показати всю главу");
+    $("next").disabled = !done; $("next").innerHTML = t(last ? "До бібліотеки" : "Наступна глава") + ARROW;
     const pct = Math.min(100, Math.round((S.shown / Math.max(1, S.total)) * 100));
-    $("ttlSub").textContent = `${chapter().title.split(". ")[0]} · ${done ? 100 : pct}%`;
+    $("ttlSub").textContent = `${chapterTitle(chapter()).split(". ")[0]} · ${done ? 100 : pct}%`;
     $("autoSw").setAttribute("aria-checked", S.auto);
     savePosition();
   }
@@ -668,7 +751,7 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
   function closePanels() { $("toc").hidden = $("settings").hidden = true; $("tocBtn").setAttribute("aria-expanded", false); $("setBtn").setAttribute("aria-expanded", false); }
   function openToc() {
     showChrome(); const was = !$("toc").hidden; closePanels(); if (was) return;
-    $("toc").innerHTML = D.chapters.map((c, i) => `<button class="toc-row ${i === S.ch ? "here" : ""}" data-i="${i}"><b>${esc(c.title)}</b><span>${i === S.ch ? "Ви тут" : i < S.ch ? "Прочитано" : ""}</span></button>`).join("");
+    $("toc").innerHTML = D.chapters.map((c, i) => `<button class="toc-row ${i === S.ch ? "here" : ""}" data-i="${i}"><b>${esc(chapterTitle(c))}</b><span>${i === S.ch ? t("Ви тут") : i < S.ch ? t("Прочитано") : ""}</span></button>`).join("");
     $("toc").querySelectorAll(".toc-row").forEach((b) => b.onclick = () => { closePanels(); setAuto(false); startChapter(+b.dataset.i); });
     $("toc").hidden = false; $("tocBtn").setAttribute("aria-expanded", true);
   }
