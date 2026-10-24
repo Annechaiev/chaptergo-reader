@@ -196,10 +196,11 @@ const INIT = () => {
     const after = await state(); note('resume.state', after);
     note('resume.same', [before.items === after.items, before.sub === after.sub, before.go === after.go, before.scrollY, after.scrollY]);
   });
-  // F11 end-of-chapter restart link restarts the chapter; other option of each choice
-  await step('reread', async () => {
-    const t0 = await mark(); await $tap('#small'); await idle(); note('reread.state', await state()); note('reread.reveal', await reveal(t0));
-    await toEnd('reread', 1, false); note('reread.end', await state()); note('reread.items', await ev(() => [...document.querySelectorAll('#stream > .item')].map(e => e.className.replace(/\s*\bin\b/, '') + '|' + e.textContent.trim().slice(0, 30))));
+  // F11 end-of-chapter left button goes back to the library (owner 24.10.2026); the book reopens at its saved place
+  await step('tolibrary', async () => {
+    await $tap('#small'); await p.waitForTimeout(300);
+    note('tolibrary.library', await ev(() => [!document.getElementById('library').hidden, document.getElementById('reader').hidden]));
+    await $tap('[data-book]', 0); await idle(); note('tolibrary.reopen', await state());
   });
   // F12 next chapter
   await step('nextch', async () => { const t0 = await mark(); await $tap('#next'); await idle(); note('nextch.state', await state()); note('nextch.reveal', await reveal(t0)); });
