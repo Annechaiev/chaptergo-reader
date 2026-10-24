@@ -38,7 +38,8 @@ for (const book of data.books) {
       else if (n.text) report.push(`${n.speaker && n.speaker !== 'narrator' ? `${n.voiceName || n.speaker}${n.presentation === 'thought' ? ' (thought)' : ''}: ` : ''}${n.text}`);
     }
   }
-  for (const [key, count] of Object.entries(lines)) if (count >= 5 && key !== 'system' && !book.speakers?.[key]?.asset)
+  // Group and unnamed voices are label-only by design (the reader's name filter); portraits belong to characters.
+  for (const [key, count] of Object.entries(lines)) if (count >= 5 && key !== 'system' && key !== 'someone' && !key.startsWith('role:') && !book.speakers?.[key]?.asset)
     failures.push(`${book.title}: ${book.speakers?.[key]?.name || key} speaks ${count} lines and has no portrait`);
 }
 fs.writeFileSync(path.join(outDir, 'content.txt'), report.join('\n'));
