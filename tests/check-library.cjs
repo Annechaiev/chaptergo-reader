@@ -38,7 +38,8 @@ for (const book of data.books) {
     for (const e of ch.episodes) for (let n = e.nodes[e.start]; n && steps++ < 100000;
       n = e.nodes[n.kind === 'choice' ? n.choices[0]?.targetNodeId : n.nextNodeId]) {
       if (n.kind === 'image' || n.role === 'break' || n.role === 'plate') continue;
-      run = n.kind === 'message' && n.speaker === 'narrator' && n.presentation !== 'thought' && n.text ? run + 1 : 0;
+      // The chapter's closing block is narration too when the narrator says it (the reader draws it as one).
+      run = (n.kind === 'message' || n.kind === 'ending') && (n.speaker ?? 'narrator') === 'narrator' && n.presentation !== 'thought' && n.text ? run + 1 : 0;
       longest = Math.max(longest, run);
     }
     if (longest > 5) failures.push(`${book.title}: chapter ${ch.number} has ${longest} narration bubbles in a row (law: at most 5)`);
