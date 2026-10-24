@@ -91,9 +91,9 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--ac); outline-of
 @keyframes rise { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
 /* Blocks that do not fit wait for the next page. */
 .later { visibility: hidden; }
-/* Reading spacing (owner 24.10.2026): reduce the one gap between all blocks by 10%, from 27.2px to 24.48px.
+/* Reading spacing (owner 24.10.2026): reduce the one gap between all blocks by 10%, from 27.2px to 24.48px, then by 15% to 20.81px.
    A text block's edges are its letter tops and last baseline. */
-#reader .stream { gap: 24.48px; }
+#reader .stream { gap: 20.81px; }
 #reader .row { margin-bottom: 0; }
 #reader .row .who { text-box: trim-start cap alphabetic; }
 #reader .narr { margin-block: 0; text-box: trim-both cap alphabetic; }
@@ -179,7 +179,8 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
   background: linear-gradient(to bottom, transparent, var(--bg) 22px); padding-top: 22px; }
 .dock-in { max-width: 34rem; margin: 0 auto; height: var(--dock-h); padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px));
   display: grid; grid-template-rows: 36px 40px; gap: 6px; }
-.links { display: flex; justify-content: space-between; align-items: center; }
+/* Owner 24.10.2026: the two links sit 15% closer to the button (text-to-button 16.25px -> 13.8px); the button stays put. */
+.links { display: flex; justify-content: space-between; align-items: center; translate: 0 2.4px; }
 .next { border: 0; background: transparent; padding: 0; min-height: 36px; font-size: .82rem; font-weight: 600; color: var(--muted); opacity: .55; display: inline-flex; align-items: center; gap: 4px; }
 .next:not(:disabled) { color: var(--link); opacity: 1; }
 .next svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
