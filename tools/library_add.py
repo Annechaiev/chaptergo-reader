@@ -52,6 +52,7 @@ def new_book(name, folder):
 
 html = LIB.read_text(encoding="utf-8")
 match = DATA.search(html)
+old_ids = [b["id"] for b in json.loads(match[2].replace("<\\/", "</"))["books"]]
 books = {b["id"]: b for b in json.loads(match[2].replace("<\\/", "</"))["books"]}
 for arg in sys.argv[1:]:
     name, folder = arg.split("=", 1)
@@ -59,5 +60,9 @@ for arg in sys.argv[1:]:
 assert set(books) <= set(ORDER), sorted(set(books) - set(ORDER))
 ordered = [books[k] for k in ORDER if k in books]
 payload = json.dumps({"books": ordered}, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
-LIB.write_text(html[:match.start(2)] + payload + html[match.end(2):], encoding="utf-8")
+html = html[:match.start(2)] + payload + html[match.end(2):]
+# Pictures of the older books sit outside the data as <img data-book="<position>">: follow each book to its new position.
+new_index = {book_id: str(i) for i, book_id in enumerate(k for k in ORDER if k in books)}
+html = re.sub(r'(<img data-book=")(\d+)(")', lambda m: m[1] + new_index[old_ids[int(m[2])]] + m[3], html)
+LIB.write_text(html, encoding="utf-8")
 print([(b["id"], b["title"], b.get("lang", "uk"), len(b["chapters"])) for b in ordered])
