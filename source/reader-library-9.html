@@ -420,7 +420,9 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
         stem.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\p{L}{0,4}").join("\\s+") + ")(?=$|[^\\p{L}])",
         label[0] === label[0].toLowerCase() ? "iu" : "u"), stems.join(" ").length];
     });
-    S.named = new Set();
+    // A name is marked once per book (owner 25.10): names already met in earlier chapters start as known.
+    const earlier = D.chapters.slice(0, i).flatMap((c) => c.episodes.flatMap((e) => Object.values(e.nodes))).map((x) => x.text || "").join(" ");
+    S.named = new Set(S.labels.filter(([, re]) => re.test(earlier)).map(([label]) => label));
     S.offset = 0; S.preview = S.terminal = null;
     stream.querySelectorAll(".item").forEach((el) => el.remove());
     const [num, ...rest] = chapterTitle(chapter()).split(". ");
