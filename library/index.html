@@ -547,7 +547,8 @@ html:not(.js) #app, .js #static { display: none; }
     return out + esc(text.slice(at));
   }
   const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-  const avatar = (key, name) => { const sp = D.speakers[key]; return sp?.asset ? `<img class="ava" src="${D.img[sp.asset]}" alt="">` : `<span class="ava">${esc((sp?.name || name || "?")[0])}</span>`; };
+  // A voice with no name gets a plain circle, never a question mark (owner 25.10.2026).
+  const avatar = (key, name) => { const sp = D.speakers[key]; return sp?.asset ? `<img class="ava" src="${D.img[sp.asset]}" alt="">` : `<span class="ava">${esc((sp?.name || name || " ")[0])}</span>`; };
   const line = (key, name, text, cls = "", thought = false, mark = false) => add(`<span class="who">${thought ? `<span class="thought-marker" role="img" aria-label="${t("Думка")}">◌ </span>` : ""}${esc(name)}</span>${avatar(key, name)}<div class="bub">${thought ? '<i class="puff" aria-hidden="true"></i>' : ""}${mark ? marks(text) : esc(text)}</div>`, "div", `row in ${cls}`);
   function picture(n) {
     const [width, height] = D.imageSizes[n.asset];
