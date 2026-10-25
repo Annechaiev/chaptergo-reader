@@ -606,8 +606,9 @@ html:not(.js) #app, .js #static { display: none; }
   // offsetTop/offsetHeight ignore the rise animation while measuring the real layout.
   const pageTop = () => S.page.offsetTop + S.offset;
   const bottom = (el) => el.offsetTop + el.offsetHeight;
-  // Text must clear the dock; a reply's bottom padding and border may sit in its fade.
-  const fits = (el) => el.matches(".narr, .row") && !el.querySelector(".typing") ? firstCut(el, pageTop() + floor() - el.offsetTop) === undefined : bottom(el) <= pageTop() + floor();
+  // Text must clear the dock; a reply also keeps its own bubble edge above it (owner 25.10.2026).
+  // The 12 is the page top's margin under the screen top (alignPage), not a reserve.
+  const fits = (el) => el.matches(".narr, .row") && !el.querySelector(".typing") ? firstCut(el, pageTop() + floor() - 12 - el.offsetTop) === undefined : bottom(el) <= pageTop() + floor() - 12;
   // «Далі» and the choice it brings slide; every other realignment (resize, restore, whole chapter) jumps.
   // The slide is our own frame loop tied to S.gen, so cancel() stops it before any jump (a browser smooth scroll does not).
   function alignPage(smooth = false) {
@@ -660,7 +661,7 @@ html:not(.js) #app, .js #static { display: none; }
   // Pages mode: nothing is cut under the buttons. A paragraph shows the whole lines that fit and goes on from the next line on
   // the next page; a reply waits unseen; a picture shows its top when a quarter of the screen is left for it.
   function pagesOverflow() {
-    const el = S.preview, room = el ? pageTop() + floor() - el.offsetTop : 0;
+    const el = S.preview, room = el ? pageTop() + floor() - 12 - el.offsetTop : 0;
     items().forEach((item) => { item.style.clipPath = ""; });
     S.split = 0;
     if (room > 0 && (el.matches(".narr") || el === S.page && el.matches(".row"))) {
@@ -675,8 +676,13 @@ html:not(.js) #app, .js #static { display: none; }
   // drawn top, so its rise animation (a few px of shift) cancels out.
   function firstCut(el, room) {
     const drawn = el.getBoundingClientRect().top + scrollY, lines = textLines(el);
-    const cut = textLines(el, "bottom").findIndex((y) => y - drawn > room);
+    const cut = textLines(el, "bottom").findIndex((y) => y - drawn > room - edge(el));
     return cut < 0 ? undefined : lines[cut] - drawn;
+  }
+  // A reply's bubble edge under its last text line: line spacing, bottom padding and border.
+  function edge(el) {
+    const bub = el.querySelector(".bub"), last = bub && textLines(el, "bottom").pop();
+    return last === undefined || !bub ? 0 : bub.getBoundingClientRect().bottom + scrollY - last;
   }
   function textLines(el, edge = "top") {
     const text = el.querySelector(".bub") || el;
@@ -690,9 +696,9 @@ html:not(.js) #app, .js #static { display: none; }
   }
   // A tall text block continues on a whole text line, with the previous line under the fade.
   function continuation(el) {
-    const limit = pageTop() + floor();
+    const limit = pageTop() + floor() - 12 - edge(el);
     const next = textLines(el).filter((y) => y > pageTop() + 1 && y <= limit).pop();
-    return next === undefined ? S.offset + floor() : next - el.offsetTop;
+    return next === undefined ? S.offset + floor() - 12 : next - el.offsetTop;
   }
 
   // One node, retaining the existing typing pause and rise rhythm.
@@ -748,7 +754,7 @@ html:not(.js) #app, .js #static { display: none; }
     const pxPerMs = () => 24 * (+getComputedStyle(app).getPropertyValue("--fs") || 1) / (6 * SPEED[S.speed]);
     const reveal = async () => {
       while (gen === S.gen && !S.waiting && !S.done) {
-        if (bottom(last()) > scrollY + floor()) { await sleep(120); continue; }
+        if (bottom(last()) > scrollY + floor() - 12) { await sleep(120); continue; }
         if (!(await showOne(gen))) return;
         await sleep(220);
       }
@@ -772,7 +778,7 @@ html:not(.js) #app, .js #static { display: none; }
     items().forEach((el) => { el.classList.remove("later"); el.style.clipPath = ""; });
     const terminal = S.terminal;
     terminal.style.marginTop = "0px";
-    const limit = bottom(terminal) - floor();
+    const limit = bottom(terminal) - (floor() - 12);
     S.page = items().find((el) => el.offsetTop >= limit) || terminal;
     S.offset = 0; S.preview = null; alignPage(); placeChoice(); sync();
   }
