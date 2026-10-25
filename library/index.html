@@ -186,7 +186,7 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
 
 /* Bottom dock: one low row, same place in every state */
 .dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
-  background: linear-gradient(to bottom, transparent, var(--bg) 22px); padding-top: 22px; }
+  background: linear-gradient(to bottom, transparent, var(--bg) 10px); padding-top: 0; }
 .dock-in { max-width: 34rem; margin: 0 auto; height: var(--dock-h); padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px));
   display: grid; grid-template-rows: 36px 40px; gap: 6px; }
 /* Owner 24.10.2026: the two links sit 15% closer to the button (text-to-button 16.25px -> 13.8px); the button stays put. */
@@ -598,15 +598,15 @@ html:not(.js) #app, .js #static { display: none; }
   }
 
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-  // The readable bottom is the top of the dock's fade: a line counts as shown only when it is fully above the fade,
-  // so a block or line that does not clear it opens the next page instead (owner 24.10.2026).
+  // The readable bottom is the top of the dock (owner 25.10.2026: the 10px fade sits under the text, the link letters stay 12px below it);
+  // a line counts as shown only when it is fully above it, so a block or line that does not clear it opens the next page instead.
   const floor = () => document.querySelector(".dock").getBoundingClientRect().top;
   const items = () => [...stream.querySelectorAll(":scope > .item")];
   // offsetTop/offsetHeight ignore the rise animation while measuring the real layout.
   const pageTop = () => S.page.offsetTop + S.offset;
   const bottom = (el) => el.offsetTop + el.offsetHeight;
-  // Text must clear the fade; a reply's bottom padding and border may sit in it.
-  const fits = (el) => el.matches(".narr, .row") && !el.querySelector(".typing") ? firstCut(el, pageTop() + floor() - 12 - el.offsetTop) === undefined : bottom(el) <= pageTop() + floor() - 12;
+  // Text must clear the dock; a reply's bottom padding and border may sit in its fade.
+  const fits = (el) => el.matches(".narr, .row") && !el.querySelector(".typing") ? firstCut(el, pageTop() + floor() - el.offsetTop) === undefined : bottom(el) <= pageTop() + floor();
   // «Далі» and the choice it brings slide; every other realignment (resize, restore, whole chapter) jumps.
   // The slide is our own frame loop tied to S.gen, so cancel() stops it before any jump (a browser smooth scroll does not).
   function alignPage(smooth = false) {
@@ -659,7 +659,7 @@ html:not(.js) #app, .js #static { display: none; }
   // Pages mode: nothing is cut under the buttons. A paragraph shows the whole lines that fit and goes on from the next line on
   // the next page; a reply waits unseen; a picture shows its top when a quarter of the screen is left for it.
   function pagesOverflow() {
-    const el = S.preview, room = el ? pageTop() + floor() - 12 - el.offsetTop : 0;
+    const el = S.preview, room = el ? pageTop() + floor() - el.offsetTop : 0;
     items().forEach((item) => { item.style.clipPath = ""; });
     S.split = 0;
     if (room > 0 && (el.matches(".narr") || el === S.page && el.matches(".row"))) {
@@ -689,9 +689,9 @@ html:not(.js) #app, .js #static { display: none; }
   }
   // A tall text block continues on a whole text line, with the previous line under the fade.
   function continuation(el) {
-    const limit = pageTop() + floor() - 12;
+    const limit = pageTop() + floor();
     const next = textLines(el).filter((y) => y > pageTop() + 1 && y <= limit).pop();
-    return next === undefined ? S.offset + floor() - 12 : next - el.offsetTop;
+    return next === undefined ? S.offset + floor() : next - el.offsetTop;
   }
 
   // One node, retaining the existing typing pause and rise rhythm.
@@ -747,7 +747,7 @@ html:not(.js) #app, .js #static { display: none; }
     const pxPerMs = () => 24 * (+getComputedStyle(app).getPropertyValue("--fs") || 1) / (6 * SPEED[S.speed]);
     const reveal = async () => {
       while (gen === S.gen && !S.waiting && !S.done) {
-        if (bottom(last()) > scrollY + floor() - 12) { await sleep(120); continue; }
+        if (bottom(last()) > scrollY + floor()) { await sleep(120); continue; }
         if (!(await showOne(gen))) return;
         await sleep(220);
       }
@@ -771,7 +771,7 @@ html:not(.js) #app, .js #static { display: none; }
     items().forEach((el) => { el.classList.remove("later"); el.style.clipPath = ""; });
     const terminal = S.terminal;
     terminal.style.marginTop = "0px";
-    const limit = bottom(terminal) - (floor() - 12);
+    const limit = bottom(terminal) - floor();
     S.page = items().find((el) => el.offsetTop >= limit) || terminal;
     S.offset = 0; S.preview = null; alignPage(); placeChoice(); sync();
   }
