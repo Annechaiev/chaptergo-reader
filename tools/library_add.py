@@ -11,11 +11,12 @@ import build  # noqa: E402
 LIB = Path(__file__).resolve().parent.parent / "library" / "index.html"
 DATA = re.compile(r'(<script type="application/json" id="data">)(.*?)(</script>)', re.S)
 # Owner 25.10: «хобит вверху, гамлет под ним, кот, … дальше в той последовательности как сейчас».
-ORDER = ["hobbit", "hamlet", "kot-uk", "khameleon3-1", "karl", "nar4", "sys1", "kot-ru"]
+ORDER = ["hobbit", "hamlet", "kot-uk", "khameleon3-1", "karl", "nar4", "sys1", "kot-ru", "recruit-en"]
 META = {
     "hamlet": {"genres": ["Сатира", "П'єса"], "titles": ["Дія перша", "Дія друга"]},
     "kot-uk": {"genres": ["Фантастика", "Пригоди"]},
     "kot-ru": {"genres": ["Фантастика", "Пригоди"], "lang": "ru"},
+    "recruit-en": {"genres": ["Пригоди"], "lang": "en"},
 }
 
 
