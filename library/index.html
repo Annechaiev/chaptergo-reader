@@ -189,8 +189,8 @@ figure.pic img { display: block; width: 100%; height: auto; max-width: 100%; bor
   background: linear-gradient(to bottom, transparent, var(--bg) 10px); padding-top: 0; }
 .dock-in { max-width: 34rem; margin: 0 auto; height: var(--dock-h); padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px));
   display: grid; grid-template-rows: 36px 40px; gap: 6px; }
-/* Owner 24.10.2026: the two links sit 15% closer to the button (text-to-button 16.25px -> 13.8px); the button stays put. */
-.links { display: flex; justify-content: space-between; align-items: center; translate: 0 2.4px; }
+/* Owner 24.10.2026: the two links sit 15% closer to the button (16.25px -> 13.8px); owner 25.10.2026: 10% closer again (13.6px -> 12.24px); the button stays put. */
+.links { display: flex; justify-content: space-between; align-items: center; translate: 0 3.76px; }
 .next { border: 0; background: transparent; padding: 0; min-height: 36px; font-size: .82rem; font-weight: 600; color: var(--muted); opacity: .55; display: inline-flex; align-items: center; gap: 4px; }
 .next:not(:disabled) { color: var(--link); opacity: 1; }
 .next svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
