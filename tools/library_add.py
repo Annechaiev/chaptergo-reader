@@ -15,7 +15,7 @@ ORDER = ["hobbit", "hamlet", "kot-uk", "khameleon3-1", "karl", "nar4", "sys1", "
 META = {
     "hamlet": {"genres": ["Сатира", "П'єса"], "titles": ["Дія перша", "Дія друга"]},
     "kot-uk": {"genres": ["Фантастика", "Пригоди"]},
-    "kot-ru": {"genres": ["Фантастика", "Пригоди"], "lang": "ru"},
+    "kot-ru": {"genres": ["Фантастика", "Пригоди"], "lang": "ru", "title": "Квантовый кот"},
     "recruit-en": {"genres": ["Пригоди"], "lang": "en"},
 }
 
@@ -46,6 +46,8 @@ def new_book(name, folder):
     book.update(id=name, mode="pages", genres=meta.get("genres", []))
     if "lang" in meta:
         book["lang"] = meta["lang"]
+    if "title" in meta:  # shortcut: a translated edition keeps the source book title in the export; drop when the engine localizes it
+        book["title"] = meta["title"]
     for chapter, title in zip(book["chapters"], meta.get("titles", [])):
         chapter["title"] = chapter["title"] or title  # the play's act names; the export leaves them empty
     return book
