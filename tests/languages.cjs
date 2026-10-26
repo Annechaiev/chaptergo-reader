@@ -131,10 +131,10 @@ sheet.save(sys.argv[1])`, destination, ...shots]);
     await p.goto('https://languages.test/');
     assert.equal(await p.locator('#language').inputValue(), 'uk');
     assert.equal(await p.locator('.book-tag').first().textContent(), 'Unlisted genre');
-    for (const language of ['ru', 'en', 'es']) {
+    for (const language of ['ru', 'en', 'es', 'id']) {
       await p.locator('#language').selectOption(language);
       assert.equal(await p.locator('.book-card').count(), 0);
-      assert.equal(await p.locator('[role=status]').textContent(), copy[language][7]);
+      assert.equal(await p.locator('[role=status]').textContent(), language === 'id' ? 'Belum ada buku dalam bahasa ini' : copy[language][7]);
     }
     await p.locator('#language').selectOption('uk');
     assert.equal(await p.locator('.book-card').count(), books.length);
